@@ -28,6 +28,7 @@ import fcntl
 import logging
 import tempfile
 import copy
+import time
 
 
 CONFIG_D = '/etc/turku-storage/config.d'
@@ -204,18 +205,24 @@ class StoragePing():
         except ValueError:
             raise Exception('Received invalid reply from API server')
 
-    def run_logging(self, args, loglevel=logging.DEBUG, cwd=None, env=None):
+    def run_logging(self, args, loglevel=logging.DEBUG, cwd=None, env=None, return_output=False):
         self.logger.log(loglevel, 'Running: %s' % repr(args))
         t = tempfile.NamedTemporaryFile()
         self.logger.log(loglevel, '(Command output is in %s until written here at the end)' % t.name)
         returncode = subprocess.call(args, cwd=cwd, env=env, stdout=t, stderr=t)
         t.flush()
         t.seek(0)
+        out = ''
         for line in t:
+            if return_output:
+                out = out + line
             self.logger.log(loglevel, line.rstrip('\n'))
         t.close()
         self.logger.log(loglevel, 'Return code: %d' % returncode)
-        return returncode
+        if return_output:
+            return (returncode, out)
+        else:
+            return returncode
 
     def process_ping(self):
         jsonin = ''
@@ -266,6 +273,7 @@ class StoragePing():
         else:
             self.logger.info('No sources to back up now')
         for s in scheduled_sources:
+            time_begin = time.time()
             machine_dir = os.path.join(self.config['storage_dir'], machine['uuid'])
             if not os.path.exists(machine_dir):
                 os.makedirs(machine_dir)
@@ -313,6 +321,7 @@ class StoragePing():
             else:
                 success = False
 
+            summary_output = ''
             if self.config['snapshot_mode'] == 'attic':
                 attic_dir = '%s.attic' % storage_dir
                 if not os.path.exists(attic_dir):
@@ -327,16 +336,24 @@ class StoragePing():
                     for snapshot in to_delete:
                         attic_args = ['attic', 'delete', '%s::%s' % (attic_dir, snapshot)]
                         self.run_logging(attic_args)
+                attic_args = ['attic', 'info', '%s::%s' % (attic_dir, now.isoformat())]
+                (ret, summary_output) = self.run_logging(attic_args, return_output=True)
             elif self.config['snapshot_mode'] == 'link-dest':
                 # XXX todo
                 pass
 
+            time_end = time.time()
             api_out = {
                 'name': self.config['name'],
                 'secret': self.config['secret'],
                 'machine_uuid': self.arg_uuid,
                 'source_name': s['name'],
                 'success': success,
+                'backup_data': {
+                    'summary': summary_output,
+                    'time_begin': time_begin,
+                    'time_end': time_end,
+                },
             }
             api_reply = self.api_call(self.config['api_url'], 'storage_ping_source_update', api_out)
 
