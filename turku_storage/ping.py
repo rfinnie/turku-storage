@@ -280,7 +280,7 @@ class StoragePing():
 
             self.logger.info('Begin: %s %s' % (machine['unit_name'], s['name']))
 
-            rsync_args = ['rsync', '--archive', '--compress', '--numeric-ids', '--delete']
+            rsync_args = ['rsync', '--archive', '--compress', '--numeric-ids', '--delete', '--delete-excluded']
             rsync_args.append('--verbose')
 
             if self.config['snapshot_mode'] == 'attic':
@@ -288,9 +288,18 @@ class StoragePing():
             elif self.config['snapshot_mode'] == 'none':
                 rsync_args.append('--inplace')
 
+            filter_file = tempfile.NamedTemporaryFile()
+            if 'filter' in s:
+                for filter in s['filter']:
+                    if filter.startswith('merge') or filter.startswith(':'):
+                        # Do not allow local merges
+                        continue
+                    filter_file.write('%s\n' % filter)
             if 'exclude' in s:
                 for exclude in s['exclude']:
-                    rsync_args.append('--exclude=%s' % exclude)
+                    filter_file.write('- %s\n' % exclude)
+            filter_file.flush()
+            rsync_args.append('--filter=merge %s' % filter_file.name)
 
             rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (s['username'], forwarded_port, s['name']))
 
@@ -320,6 +329,7 @@ class StoragePing():
                 success = True
             else:
                 success = False
+            filter_file.close()
 
             summary_output = ''
             if self.config['snapshot_mode'] == 'attic':
