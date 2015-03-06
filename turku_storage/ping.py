@@ -29,6 +29,7 @@ import logging
 import tempfile
 import copy
 import time
+import shutil
 
 
 CONFIG_D = '/etc/turku-storage/config.d'
@@ -48,29 +49,48 @@ def dict_merge(s, m):
     return out
 
 
+def parse_snapshot_name(ss):
+    # If a snapshot name matches one of these formats
+    #     1424392089.43
+    #     2015-02-20T03:20:36
+    #     2015-02-20T03:21:18.152575
+    # use it as a timestamp, otherwise ignore it
+    if 'save' in ss:
+        raise ValueError('Excluded snapshot')
+    if ss == 'working':
+        raise ValueError('Excluded snapshot')
+    try:
+        return datetime.datetime.strptime(ss, '%Y-%m-%dT%H:%M:%S.%f')
+    except ValueError:
+        pass
+    try:
+        return datetime.datetime.strptime(ss, '%Y-%m-%dT%H:%M:%S')
+    except ValueError:
+        pass
+    try:
+        return datetime.datetime.utcfromtimestamp(float(ss))
+    except ValueError:
+        pass
+    raise ValueError('Unknown snapshot name format')
+
+
+def get_latest_snapshot(snapshots):
+    snapshot_dict = {}
+    for ss in snapshots:
+        try:
+            snapshot_dict[parse_snapshot_name(ss)] = ss
+        except ValueError:
+            pass
+    if len(snapshot_dict) == 0:
+        return None
+    return snapshot_dict[max(snapshot_dict.keys())]
+
+
 def get_snapshots_to_delete(retention, snapshots):
     snapshot_dict = {}
     for ss in snapshots:
-        if 'save' in ss:
-            continue
-        # If a snapshot name matches one of these formats
-        #     1424392089.43
-        #     2015-02-20T03:20:36
-        #     2015-02-20T03:21:18.152575
-        # use it as a timestamp, otherwise ignore it
         try:
-            snapshot_dict[datetime.datetime.strptime(ss, '%Y-%m-%dT%H:%M:%S.%f')] = ss
-            continue
-        except ValueError:
-            pass
-        try:
-            snapshot_dict[datetime.datetime.strptime(ss, '%Y-%m-%dT%H:%M:%S')] = ss
-            continue
-        except ValueError:
-            pass
-        try:
-            snapshot_dict[datetime.datetime.utcfromtimestamp(float(ss))] = ss
-            continue
+            snapshot_dict[parse_snapshot_name(ss)] = ss
         except ValueError:
             pass
 
@@ -162,7 +182,7 @@ class StoragePing():
             config['log_file'] = '/var/log/turku-storage.log'
 
         if not 'snapshot_mode' in config:
-            config['snapshot_mode'] = 'none'
+            config['snapshot_mode'] = 'link-dest'
 
         self.config = config
 
@@ -274,6 +294,12 @@ class StoragePing():
             self.logger.info('No sources to back up now')
         for s in scheduled_sources:
             time_begin = time.time()
+            snapshot_mode = self.config['snapshot_mode']
+            if snapshot_mode == 'link-dest':
+                if 'large_rotating_files' in s and s['large_rotating_files']:
+                    snapshot_mode = 'none'
+                if 'large_modifying_files' in s and s['large_modifying_files']:
+                    snapshot_mode = 'none'
             machine_dir = os.path.join(self.config['storage_dir'], machine['uuid'])
             if not os.path.exists(machine_dir):
                 os.makedirs(machine_dir)
@@ -283,10 +309,24 @@ class StoragePing():
             rsync_args = ['rsync', '--archive', '--compress', '--numeric-ids', '--delete', '--delete-excluded']
             rsync_args.append('--verbose')
 
-            if self.config['snapshot_mode'] == 'attic':
+            if snapshot_mode == 'attic':
                 rsync_args.append('--inplace')
-            elif self.config['snapshot_mode'] == 'none':
+                dest_dir = os.path.join(machine_dir, s['name'])
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
+            elif snapshot_mode == 'link-dest':
+                snapshot_dir = os.path.join(machine_dir, '%s.snapshots' % s['name'])
+                if not os.path.exists(snapshot_dir):
+                    os.makedirs(snapshot_dir)
+                dirs = [d for d in os.listdir(snapshot_dir) if os.path.isdir(os.path.join(snapshot_dir, d))]
+                base_snapshot = get_latest_snapshot(dirs)
+                if base_snapshot:
+                    rsync_args.append('--link-dest=%s' % os.path.join(snapshot_dir, base_snapshot))
+            else:
                 rsync_args.append('--inplace')
+                dest_dir = os.path.join(machine_dir, s['name'])
+                if not os.path.exists(dest_dir):
+                    os.makedirs(dest_dir)
 
             filter_file = tempfile.NamedTemporaryFile()
             if 'filter' in s:
@@ -303,10 +343,10 @@ class StoragePing():
 
             rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (s['username'], forwarded_port, s['name']))
 
-            storage_dir = os.path.join(machine_dir, s['name'])
-            if not os.path.exists(storage_dir):
-                os.makedirs(storage_dir)
-            rsync_args.append('%s/' % storage_dir)
+            if snapshot_mode == 'link-dest':
+                rsync_args.append('%s/' % os.path.join(snapshot_dir, 'working'))
+            else:
+                rsync_args.append('%s/' % dest_dir)
 
             machine_symlink = machine['unit_name']
             if 'service_name' in machine and machine['service_name']:
@@ -331,30 +371,44 @@ class StoragePing():
                 success = False
             filter_file.close()
 
+            snapshot_name = None
+            summary_output = None
             if success:
-                summary_output = None
-                snapshot_name = datetime.datetime.now().isoformat()
+                if snapshot_mode == 'attic':
+                    snapshot_name = datetime.datetime.now().isoformat()
+                    attic_dir = '%s.attic' % dest_dir
+                    if not os.path.exists(attic_dir):
+                        attic_args = ['attic', 'init', attic_dir]
+                        self.run_logging(attic_args)
+                    attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, snapshot_name), '.']
+                    self.run_logging(attic_args, cwd=dest_dir)
+                    if 'retention' in s:
+                        attic_snapshots = re.findall('^([\w\.\-\:]+)', subprocess.check_output(['attic', 'list', attic_dir]), re.M)
+                        to_delete = get_snapshots_to_delete(s['retention'], attic_snapshots)
+                        for snapshot in to_delete:
+                            attic_args = ['attic', 'delete', '%s::%s' % (attic_dir, snapshot)]
+                            self.run_logging(attic_args)
+                    attic_args = ['attic', 'info', '%s::%s' % (attic_dir, snapshot_name)]
+                    (ret, summary_output) = self.run_logging(attic_args, return_output=True)
+                elif snapshot_mode == 'link-dest':
+                    summary_output = ''
+                    if base_snapshot:
+                        summary_output = summary_output + 'Base snapshot: %s\n' % base_snapshot
+                    snapshot_name = datetime.datetime.now().isoformat()
+                    os.rename(os.path.join(snapshot_dir, 'working'), os.path.join(snapshot_dir, snapshot_name))
+                    if os.path.exists(os.path.join(snapshot_dir, 'latest')):
+                        if os.path.islink(os.path.join(snapshot_dir, 'latest')):
+                            os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
+                    else:
+                        os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
+                    if 'retention' in s:
+                        dirs = [d for d in os.listdir(snapshot_dir) if os.path.isdir(os.path.join(snapshot_dir, d))]
+                        to_delete = get_snapshots_to_delete(s['retention'], dirs)
+                        for snapshot in to_delete:
+                            shutil.rmtree(os.path.join(snapshot_dir, snapshot))
+                            summary_output = summary_output + 'Removed old snapshot: %s\n' % snapshot
             else:
                 summary_output = 'rsync exited with return code %d' % returncode
-                snapshot_name = None
-            if success and (self.config['snapshot_mode'] == 'attic'):
-                attic_dir = '%s.attic' % storage_dir
-                if not os.path.exists(attic_dir):
-                    attic_args = ['attic', 'init', attic_dir]
-                    self.run_logging(attic_args)
-                attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, snapshot_name), '.']
-                self.run_logging(attic_args, cwd=storage_dir)
-                if 'retention' in s:
-                    attic_snapshots = re.findall('^([\w\.\-\:]+)', subprocess.check_output(['attic', 'list', attic_dir]), re.M)
-                    to_delete = get_snapshots_to_delete(s['retention'], attic_snapshots)
-                    for snapshot in to_delete:
-                        attic_args = ['attic', 'delete', '%s::%s' % (attic_dir, snapshot)]
-                        self.run_logging(attic_args)
-                attic_args = ['attic', 'info', '%s::%s' % (attic_dir, snapshot_name)]
-                (ret, summary_output) = self.run_logging(attic_args, return_output=True)
-            elif success and (self.config['snapshot_mode'] == 'link-dest'):
-                # XXX todo
-                pass
 
             time_end = time.time()
             api_out = {
@@ -382,6 +436,7 @@ class StoragePing():
         except Exception as e:
             self.logger.exception(e.message)
             return 1
+
 
 def main(argv):
     if len(argv) < 2:
