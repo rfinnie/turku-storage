@@ -338,7 +338,7 @@ class StoragePing():
                     attic_args = ['attic', 'init', attic_dir]
                     self.run_logging(attic_args)
                 now = datetime.datetime.now()
-                attic_args = ['attic', 'create', '--stats', '%s::%s' % (attic_dir, now.isoformat()), '.']
+                attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, now.isoformat()), '.']
                 self.run_logging(attic_args, cwd=storage_dir)
                 if 'retention' in s:
                     attic_snapshots = re.findall('^([\w\.\-\:]+)', subprocess.check_output(['attic', 'list', attic_dir]), re.M)
