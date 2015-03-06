@@ -331,14 +331,18 @@ class StoragePing():
                 success = False
             filter_file.close()
 
-            summary_output = ''
-            if self.config['snapshot_mode'] == 'attic':
+            if success:
+                summary_output = None
+                snapshot_name = datetime.datetime.now().isoformat()
+            else:
+                summary_output = 'rsync exited with return code %d' % returncode
+                snapshot_name = None
+            if success and (self.config['snapshot_mode'] == 'attic'):
                 attic_dir = '%s.attic' % storage_dir
                 if not os.path.exists(attic_dir):
                     attic_args = ['attic', 'init', attic_dir]
                     self.run_logging(attic_args)
-                now = datetime.datetime.now()
-                attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, now.isoformat()), '.']
+                attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, snapshot_name), '.']
                 self.run_logging(attic_args, cwd=storage_dir)
                 if 'retention' in s:
                     attic_snapshots = re.findall('^([\w\.\-\:]+)', subprocess.check_output(['attic', 'list', attic_dir]), re.M)
@@ -346,9 +350,9 @@ class StoragePing():
                     for snapshot in to_delete:
                         attic_args = ['attic', 'delete', '%s::%s' % (attic_dir, snapshot)]
                         self.run_logging(attic_args)
-                attic_args = ['attic', 'info', '%s::%s' % (attic_dir, now.isoformat())]
+                attic_args = ['attic', 'info', '%s::%s' % (attic_dir, snapshot_name)]
                 (ret, summary_output) = self.run_logging(attic_args, return_output=True)
-            elif self.config['snapshot_mode'] == 'link-dest':
+            elif success and (self.config['snapshot_mode'] == 'link-dest'):
                 # XXX todo
                 pass
 
@@ -360,6 +364,7 @@ class StoragePing():
                 'source_name': s['name'],
                 'success': success,
                 'backup_data': {
+                    'snapshot': snapshot_name,
                     'summary': summary_output,
                     'time_begin': time_begin,
                     'time_end': time_end,
