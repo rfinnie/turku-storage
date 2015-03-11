@@ -132,7 +132,8 @@ class StoragePing():
                 weights = {}
                 for dir in self.config['storage_dir']:
                     try:
-                        weights[dir] = os.statvfs(dir).f_bavail
+                        sv = os.statvfs(dir)
+                        weights[dir] = (sv.f_bsize * sv.f_bavail / 1048576)
                     except OSError:
                         continue
                 chosen_storage_dir = random_weighted(weights)

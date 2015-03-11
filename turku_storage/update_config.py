@@ -43,6 +43,21 @@ def main(argv):
 
     lock = acquire_lock(os.path.join(config['lock_dir'], 'turku-update-config.lock'))
 
+    space_total = 0
+    space_available = 0
+    seen_devs = []
+    for dir in config['storage_dir']:
+        st_dev = os.stat(dir).st_dev
+        if st_dev in seen_devs:
+            continue
+        seen_devs.append(st_dev)
+        try:
+            sv = os.statvfs(dir)
+            space_total += (sv.f_bsize * sv.f_blocks / 1048576)
+            space_available += (sv.f_bsize * sv.f_bavail / 1048576)
+        except OSError:
+            continue
+
     api_out = {
         'auth': config['api_auth'],
         'storage': {
@@ -52,6 +67,8 @@ def main(argv):
             'ssh_ping_port': config['ssh_ping_port'],
             'ssh_ping_user': config['ssh_ping_user'],
             'ssh_ping_host_keys': config['ssh_ping_host_keys'],
+            'space_total': space_total,
+            'space_available': space_available,
         },
     }
 

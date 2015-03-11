@@ -120,6 +120,8 @@ def api_call(api_url, cmd, post_data, timeout=5):
 def random_weighted(m):
     """Return a weighted random key."""
     total = sum([v for v in m.values()])
+    if total <= 0:
+        return random.choice(m.keys())
     weighted = []
     tp = 0
     for (k, v) in m.items():
