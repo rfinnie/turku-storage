@@ -30,10 +30,12 @@ import tempfile
 import copy
 import time
 import shutil
+import random
 
 
 CONFIG_D = '/etc/turku-storage/config.d'
 LOCK_DIR = '/var/lock'
+VAR_DIR = '/var/lib/turku-storage'
 
 
 def dict_merge(s, m):
@@ -47,6 +49,20 @@ def dict_merge(s, m):
         else:
             out[k] = copy.deepcopy(v)
     return out
+
+
+def random_weighted(m):
+    """Return a weighted random key."""
+    total = sum([v for v in m.values()])
+    weighted = []
+    tp = 0
+    for (k, v) in m.items():
+        tp = tp + (float(v) / float(total))
+        weighted.append((k, tp))
+    r = random.random()
+    for (k, v) in weighted:
+        if r < v:
+            return k
 
 
 def parse_snapshot_name(ss):
@@ -178,6 +194,9 @@ class StoragePing():
             if k not in config:
                 return
 
+        if type(config['storage_dir']) not in (list, tuple):
+            config['storage_dir'] = [config['storage_dir']]
+
         if not 'log_file' in config:
             config['log_file'] = '/var/log/turku-storage.log'
 
@@ -300,9 +319,40 @@ class StoragePing():
                     snapshot_mode = 'none'
                 if 'large_modifying_files' in s and s['large_modifying_files']:
                     snapshot_mode = 'none'
-            machine_dir = os.path.join(self.config['storage_dir'], machine['uuid'])
+
+            var_machines = os.path.join(VAR_DIR, 'machines')
+            if not os.path.exists(var_machines):
+                os.makedirs(var_machines)
+
+            if os.path.islink(os.path.join(var_machines, machine['uuid'])):
+                machine_dir = os.readlink(os.path.join(var_machines, machine['uuid']))
+            else:
+                weights = {}
+                for dir in self.config['storage_dir']:
+                    try:
+                        weights[dir] = os.statvfs(dir).f_bavail
+                    except OSError:
+                        continue
+                chosen_storage_dir = random_weighted(weights)
+                if not chosen_storage_dir:
+                    raise Exception('Cannot find a suitable storage directory')
+                machine_dir = os.path.join(chosen_storage_dir, machine['uuid'])
+                os.symlink(machine_dir, os.path.join(var_machines, machine['uuid']))
             if not os.path.exists(machine_dir):
                 os.makedirs(machine_dir)
+
+            machine_symlink = machine['unit_name']
+            if 'service_name' in machine and machine['service_name']:
+                machine_symlink = machine['service_name'] + '-'
+            if 'environment_name' in machine and machine['environment_name']:
+                machine_symlink = machine['environment_name'] + '-'
+            machine_symlink = machine_symlink.replace('/', '_')
+            if os.path.exists(os.path.join(var_machines, machine_symlink)):
+                if os.path.islink(os.path.join(var_machines, machine_symlink)):
+                    if not os.readlink(os.path.join(var_machines, machine_symlink)) == machine['uuid']:
+                        os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
+            else:
+                os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
 
             self.logger.info('Begin: %s %s' % (machine['unit_name'], s['name']))
 
@@ -347,19 +397,6 @@ class StoragePing():
                 rsync_args.append('%s/' % os.path.join(snapshot_dir, 'working'))
             else:
                 rsync_args.append('%s/' % dest_dir)
-
-            machine_symlink = machine['unit_name']
-            if 'service_name' in machine and machine['service_name']:
-                machine_symlink = machine['service_name'] + '-'
-            if 'environment_name' in machine and machine['environment_name']:
-                machine_symlink = machine['environment_name'] + '-'
-            machine_symlink = machine_symlink.replace('/', '_')
-            if os.path.exists(os.path.join(self.config['storage_dir'], machine_symlink)):
-                if os.path.islink(os.path.join(self.config['storage_dir'], machine_symlink)):
-                    if not os.readlink(os.path.join(self.config['storage_dir'], machine_symlink)) == machine['uuid']:
-                        os.symlink(machine['uuid'], os.path.join(self.config['storage_dir'], machine_symlink))
-            else:
-                os.symlink(machine['uuid'], os.path.join(self.config['storage_dir'], machine_symlink))
 
             rsync_env = {
                 'RSYNC_PASSWORD': s['password']
