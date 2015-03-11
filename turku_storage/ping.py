@@ -155,6 +155,7 @@ class StoragePing():
             if os.path.exists(os.path.join(var_machines, machine_symlink)):
                 if os.path.islink(os.path.join(var_machines, machine_symlink)):
                     if not os.readlink(os.path.join(var_machines, machine_symlink)) == machine['uuid']:
+                        os.unlink(os.path.join(var_machines, machine_symlink))
                         os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
             else:
                 os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
@@ -164,11 +165,11 @@ class StoragePing():
             rsync_args = ['rsync', '--archive', '--compress', '--numeric-ids', '--delete', '--delete-excluded']
             rsync_args.append('--verbose')
 
+            dest_dir = os.path.join(machine_dir, s['name'])
+            if not os.path.exists(dest_dir):
+                os.makedirs(dest_dir)
             if snapshot_mode == 'attic':
                 rsync_args.append('--inplace')
-                dest_dir = os.path.join(machine_dir, s['name'])
-                if not os.path.exists(dest_dir):
-                    os.makedirs(dest_dir)
             elif snapshot_mode == 'link-dest':
                 snapshot_dir = os.path.join(machine_dir, '%s.snapshots' % s['name'])
                 if not os.path.exists(snapshot_dir):
@@ -179,9 +180,6 @@ class StoragePing():
                     rsync_args.append('--link-dest=%s' % os.path.join(snapshot_dir, base_snapshot))
             else:
                 rsync_args.append('--inplace')
-                dest_dir = os.path.join(machine_dir, s['name'])
-                if not os.path.exists(dest_dir):
-                    os.makedirs(dest_dir)
 
             filter_file = None
             filter_data = ''
@@ -202,10 +200,7 @@ class StoragePing():
 
             rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (s['username'], forwarded_port, s['name']))
 
-            if snapshot_mode == 'link-dest':
-                rsync_args.append('%s/' % os.path.join(snapshot_dir, 'working'))
-            else:
-                rsync_args.append('%s/' % dest_dir)
+            rsync_args.append('%s/' % dest_dir)
 
             rsync_env = {
                 'RSYNC_PASSWORD': s['password']
@@ -242,9 +237,10 @@ class StoragePing():
                     if base_snapshot:
                         summary_output = summary_output + 'Base snapshot: %s\n' % base_snapshot
                     snapshot_name = datetime.datetime.now().isoformat()
-                    os.rename(os.path.join(snapshot_dir, 'working'), os.path.join(snapshot_dir, snapshot_name))
+                    os.rename(dest_dir, os.path.join(snapshot_dir, snapshot_name))
                     if os.path.exists(os.path.join(snapshot_dir, 'latest')):
                         if os.path.islink(os.path.join(snapshot_dir, 'latest')):
+                            os.unlink(os.path.join(snapshot_dir, 'latest'))
                             os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
                     else:
                         os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
