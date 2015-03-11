@@ -121,6 +121,8 @@ class StoragePing():
                     snapshot_mode = 'none'
                 if 'large_modifying_files' in s and s['large_modifying_files']:
                     snapshot_mode = 'none'
+            if 'snapshot_mode' in s and s['snapshot_mode']:
+                snapshot_mode = s['snapshot_mode']
 
             var_machines = os.path.join(self.config['var_dir'], 'machines')
             if not os.path.exists(var_machines):
