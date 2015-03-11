@@ -181,18 +181,22 @@ class StoragePing():
                 if not os.path.exists(dest_dir):
                     os.makedirs(dest_dir)
 
-            filter_file = tempfile.NamedTemporaryFile()
+            filter_file = None
+            filter_data = ''
             if 'filter' in s:
                 for filter in s['filter']:
                     if filter.startswith('merge') or filter.startswith(':'):
                         # Do not allow local merges
                         continue
-                    filter_file.write('%s\n' % filter)
+                    filter_data += '%s\n' % filter
             if 'exclude' in s:
                 for exclude in s['exclude']:
-                    filter_file.write('- %s\n' % exclude)
-            filter_file.flush()
-            rsync_args.append('--filter=merge %s' % filter_file.name)
+                    filter_data += '- %s\n' % exclude
+            if filter_data:
+                filter_file = tempfile.NamedTemporaryFile()
+                filter_file.write(filter_data)
+                filter_file.flush()
+                rsync_args.append('--filter=merge %s' % filter_file.name)
 
             rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (s['username'], forwarded_port, s['name']))
 
@@ -209,7 +213,8 @@ class StoragePing():
                 success = True
             else:
                 success = False
-            filter_file.close()
+            if filter_file:
+                filter_file.close()
 
             snapshot_name = None
             summary_output = None
