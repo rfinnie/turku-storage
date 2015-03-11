@@ -43,6 +43,9 @@ class RuntimeLock():
             import errno
             if e.errno in (errno.EACCES, errno.EAGAIN):
                 raise
+        file.write('%10s\n' % os.getpid())
+        file.flush()
+        file.seek(0)
         self.name = name
         self.file = file
 
