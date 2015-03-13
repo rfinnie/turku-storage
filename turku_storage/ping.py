@@ -132,16 +132,24 @@ class StoragePing():
                 machine_dir = os.readlink(os.path.join(var_machines, machine['uuid']))
             else:
                 weights = {}
-                for dir in self.config['storage_dir']:
+                for volume_name in self.config['volumes']:
+                    v = self.config['volumes'][volume_name]
                     try:
-                        sv = os.statvfs(dir)
-                        weights[dir] = (sv.f_bsize * sv.f_bavail / 1048576)
+                        sv = os.statvfs(v['path'])
                     except OSError:
                         continue
-                chosen_storage_dir = random_weighted(weights)
-                if not chosen_storage_dir:
+                    s_t = (sv.f_bsize * sv.f_blocks / 1048576)
+                    s_a = (sv.f_bsize * sv.f_bavail / 1048576)
+                    pct_used = (1.0 - float(s_a) / float(s_t)) * 100.0
+                    if (not v['accept_new']) or (pct_used > v['accept_new_high_water_pct']):
+                        continue
+                    weights[volume_name] = s_a
+                if len(weights) == 0:
                     raise Exception('Cannot find a suitable storage directory')
-                machine_dir = os.path.join(chosen_storage_dir, machine['uuid'])
+                chosen_volume = random_weighted(weights)
+                if not chosen_volume:
+                    raise Exception('Cannot find a suitable storage directory')
+                machine_dir = os.path.join(self.config['volumes'][chosen_volume]['path'], machine['uuid'])
                 os.symlink(machine_dir, os.path.join(var_machines, machine['uuid']))
             if not os.path.exists(machine_dir):
                 os.makedirs(machine_dir)

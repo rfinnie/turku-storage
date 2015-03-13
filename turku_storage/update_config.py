@@ -46,17 +46,23 @@ def main(argv):
     space_total = 0
     space_available = 0
     seen_devs = []
-    for dir in config['storage_dir']:
-        st_dev = os.stat(dir).st_dev
+    for volume_name in config['volumes']:
+        v = config['volumes'][volume_name]
+        st_dev = os.stat(v['path']).st_dev
         if st_dev in seen_devs:
             continue
         seen_devs.append(st_dev)
         try:
-            sv = os.statvfs(dir)
-            space_total += (sv.f_bsize * sv.f_blocks / 1048576)
-            space_available += (sv.f_bsize * sv.f_bavail / 1048576)
+            sv = os.statvfs(v['path'])
         except OSError:
             continue
+        s_t = (sv.f_bsize * sv.f_blocks / 1048576)
+        s_a = (sv.f_bsize * sv.f_bavail / 1048576)
+        pct_used = (1.0 - float(s_a) / float(s_t)) * 100.0
+        if (not v['accept_new']) or (pct_used > v['accept_new_high_water_pct']):
+            s_a = 0
+        space_total += s_t
+        space_available += s_a
 
     api_out = {
         'auth': config['api_auth'],

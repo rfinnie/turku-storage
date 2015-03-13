@@ -146,15 +146,37 @@ def load_config(config_dir, writable=False):
             j = json.load(f)
         config = dict_merge(config, j)
 
-    required_keys = ['api_url', 'api_auth', 'storage_dir']
+    required_keys = ['api_url', 'api_auth']
     if not writable:
         required_keys += ['name', 'secret']
     for k in required_keys:
         if k not in config:
             raise Exception('Incomplete config')
+    if ('volumes' not in config) and ('storage_dir' not in config):
+        raise Exception('Incomplete config')
 
-    if type(config['storage_dir']) not in (list, tuple):
-        config['storage_dir'] = [config['storage_dir']]
+    # Handle legacy storage_dir config
+    if 'volumes' not in config:
+        config['volumes'] = {}
+    if 'storage_dir' in config:
+        config['volumes']['storage_dir'] = {
+            'path': config['storage_dir'],
+        }
+
+    if 'accept_new_high_water_pct' not in config:
+        config['accept_new_high_water_pct'] = 80
+
+    for volume_name in config['volumes']:
+        if 'path' not in config['volumes'][volume_name]:
+            del(config['volumes'][volume_name])
+            continue
+        if 'accept_new' not in config['volumes'][volume_name]:
+            config['volumes'][volume_name]['accept_new'] = True
+        if 'accept_new_high_water_pct' not in config['volumes'][volume_name]:
+            config['volumes'][volume_name]['accept_new_high_water_pct'] = config['accept_new_high_water_pct']
+
+    if len(config['volumes']) == 0:
+        raise Exception('Incomplete config')
 
     if writable:
         write_name_data = False
