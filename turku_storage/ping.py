@@ -156,9 +156,9 @@ class StoragePing():
 
             machine_symlink = machine['unit_name']
             if 'service_name' in machine and machine['service_name']:
-                machine_symlink = machine['service_name'] + '-'
+                machine_symlink = machine['service_name'] + '-' + machine_symlink
             if 'environment_name' in machine and machine['environment_name']:
-                machine_symlink = machine['environment_name'] + '-'
+                machine_symlink = machine['environment_name'] + '-' + machine_symlink
             machine_symlink = machine_symlink.replace('/', '_')
             if os.path.exists(os.path.join(var_machines, machine_symlink)):
                 if os.path.islink(os.path.join(var_machines, machine_symlink)):
