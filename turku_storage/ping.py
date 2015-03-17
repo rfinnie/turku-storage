@@ -110,11 +110,27 @@ class StoragePing():
         machine = api_reply['machine']
         scheduled_sources = api_reply['scheduled_sources']
         if len(scheduled_sources) > 0:
-            self.logger.info('Sources to back up: %s' % ', '.join([s['name'] for s in scheduled_sources]))
+            self.logger.info('Sources to back up: %s' % ', '.join([s for s in scheduled_sources]))
         else:
             self.logger.info('No sources to back up now')
-        for s in scheduled_sources:
+        for source_name in scheduled_sources:
             time_begin = time.time()
+            s = scheduled_sources[source_name]
+            source_username = None
+            source_password = None
+            if ('sources' in j) and (source_name in j['sources']):
+                if ('username' in j['sources'][source_name]) and j['sources'][source_name]['username']:
+                    source_username = j['sources'][source_name]['username']
+                if ('password' in j['sources'][source_name]) and j['sources'][source_name]['password']:
+                    source_password = j['sources'][source_name]['password']
+            else:
+                if ('username' in s) and s['username']:
+                    source_username = s['username']
+                if ('password' in s) and s['password']:
+                    source_password = s['password']
+            if not (source_username and source_password):
+                self.logger.error('Cannot find authentication for source "%s"' % source_name)
+                continue
             snapshot_mode = self.config['snapshot_mode']
             if snapshot_mode == 'link-dest':
                 if 'large_rotating_files' in s and s['large_rotating_files']:
@@ -168,18 +184,18 @@ class StoragePing():
             else:
                 os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
 
-            self.logger.info('Begin: %s %s' % (machine['unit_name'], s['name']))
+            self.logger.info('Begin: %s %s' % (machine['unit_name'], source_name))
 
             rsync_args = ['rsync', '--archive', '--compress', '--numeric-ids', '--delete', '--delete-excluded']
             rsync_args.append('--verbose')
 
-            dest_dir = os.path.join(machine_dir, s['name'])
+            dest_dir = os.path.join(machine_dir, source_name)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
             if snapshot_mode == 'attic':
                 rsync_args.append('--inplace')
             elif snapshot_mode == 'link-dest':
-                snapshot_dir = os.path.join(machine_dir, '%s.snapshots' % s['name'])
+                snapshot_dir = os.path.join(machine_dir, '%s.snapshots' % source_name)
                 if not os.path.exists(snapshot_dir):
                     os.makedirs(snapshot_dir)
                 dirs = [d for d in os.listdir(snapshot_dir) if os.path.isdir(os.path.join(snapshot_dir, d))]
@@ -206,12 +222,12 @@ class StoragePing():
                 filter_file.flush()
                 rsync_args.append('--filter=merge %s' % filter_file.name)
 
-            rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (s['username'], forwarded_port, s['name']))
+            rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (source_username, forwarded_port, source_name))
 
             rsync_args.append('%s/' % dest_dir)
 
             rsync_env = {
-                'RSYNC_PASSWORD': s['password']
+                'RSYNC_PASSWORD': source_password
             }
             returncode = self.run_logging(rsync_args, env=rsync_env)
             if returncode in (0, 24):
@@ -266,7 +282,7 @@ class StoragePing():
                 'name': self.config['name'],
                 'secret': self.config['secret'],
                 'machine_uuid': self.arg_uuid,
-                'source_name': s['name'],
+                'source_name': source_name,
                 'success': success,
                 'backup_data': {
                     'snapshot': snapshot_name,
@@ -277,7 +293,7 @@ class StoragePing():
             }
             api_reply = api_call(self.config['api_url'], 'storage_ping_source_update', api_out)
 
-            self.logger.info('End: %s %s' % (machine['unit_name'], s['name']))
+            self.logger.info('End: %s %s' % (machine['unit_name'], source_name))
 
         self.logger.info('Done')
         lock.close()
