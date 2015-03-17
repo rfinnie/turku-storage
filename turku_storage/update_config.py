@@ -41,7 +41,7 @@ def main(argv):
 
     config = load_config(args.config_dir, writable=True)
 
-    lock = acquire_lock(os.path.join(config['lock_dir'], 'turku-update-config.lock'))
+    lock = acquire_lock(os.path.join(config['lock_dir'], 'turku-storage-update-config.lock'))
 
     space_total = 0
     space_available = 0
