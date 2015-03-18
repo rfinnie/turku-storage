@@ -139,7 +139,13 @@ def random_weighted(m):
 def load_config(config_dir, writable=False):
     config = {}
     config_d = os.path.join(config_dir, 'config.d')
-    config_files = [os.path.join(config_d, fn) for fn in os.listdir(config_d) if fn.endswith('.json') and os.path.isfile(os.path.join(config_d, fn)) and os.access(os.path.join(config_d, fn), os.R_OK)]
+    config_files = [
+        os.path.join(config_d, fn)
+        for fn in os.listdir(config_d)
+        if fn.endswith('.json')
+        and os.path.isfile(os.path.join(config_d, fn))
+        and os.access(os.path.join(config_d, fn), os.R_OK)
+    ]
     config_files.sort()
     for file in config_files:
         with open(file) as f:
@@ -282,17 +288,30 @@ def get_snapshots_to_delete(retention, snapshots):
                 earliest_word = 'week'
                 earliest_num = earliest_num * 2
             if earliest_word == 'day':
-                cutoff_time = (now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=(earliest_num - 1)))
+                cutoff_time = (
+                    now.replace(hour=0, minute=0, second=0, microsecond=0) -
+                    datetime.timedelta(days=(earliest_num - 1))
+                )
             elif earliest_word == 'week':
-                cutoff_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=((now.weekday() + 1) % 7))
+                cutoff_time = (
+                    now.replace(hour=0, minute=0, second=0, microsecond=0) -
+                    datetime.timedelta(days=((now.weekday() + 1) % 7))
+                )
                 for i in range(earliest_num - 1):
-                    cutoff_time = (cutoff_time - datetime.timedelta(weeks=1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    cutoff_time = (
+                        cutoff_time - datetime.timedelta(weeks=1)
+                    ).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             elif earliest_word == 'month':
                 cutoff_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 for i in range(earliest_num - 1):
-                    cutoff_time = (cutoff_time - datetime.timedelta(days=1)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    cutoff_time = (
+                        cutoff_time - datetime.timedelta(days=1)
+                    ).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
             else:
-                cutoff_time = (now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=(earliest_num - 1)))
+                cutoff_time = (
+                    now.replace(hour=0, minute=0, second=0, microsecond=0) -
+                    datetime.timedelta(days=(earliest_num - 1))
+                )
             candidate_s = None
             for s in snapshot_dict.keys():
                 if s < cutoff_time:

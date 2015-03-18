@@ -86,7 +86,11 @@ def main(argv):
             authorized_keys_out += f.read()
     for machine_uuid in api_reply['machines']:
         machine = api_reply['machines'][machine_uuid]
-        authorized_keys_out += 'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,command="%s %s" %s (%s)\n' % (config['authorized_keys_command'], machine_uuid, machine['ssh_public_key'], machine['unit_name'])
+        authorized_keys_out += '%s,command="%s %s" %s (%s)\n' % (
+            'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc',
+            config['authorized_keys_command'], machine_uuid,
+            machine['ssh_public_key'], machine['unit_name']
+        )
 
     f_uid = pwd.getpwnam(config['authorized_keys_user']).pw_uid
     f_gid = pwd.getpwnam(config['authorized_keys_user']).pw_gid
