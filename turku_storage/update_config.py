@@ -80,7 +80,10 @@ def main(argv):
 
     api_reply = api_call(config['api_url'], 'storage_update_config', api_out)
 
-    authorized_keys_out = ''
+    authorized_keys_out = '# Automatically generated, please do not edit\n'
+    if os.path.isfile(config['authorized_keys_file'] + '.static'):
+        with open(config['authorized_keys_file'] + '.static') as f:
+            authorized_keys_out += f.read()
     for machine_uuid in api_reply['machines']:
         machine = api_reply['machines'][machine_uuid]
         authorized_keys_out += 'no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc,command="%s %s" %s (%s)\n' % (config['authorized_keys_command'], machine_uuid, machine['ssh_public_key'], machine['unit_name'])
@@ -91,8 +94,10 @@ def main(argv):
     if not os.path.isdir(keys_dirname):
         os.makedirs(keys_dirname)
         os.chown(keys_dirname, f_uid, f_gid)
-    with open(config['authorized_keys_file'], 'w') as f:
+    temp_fn = '%s.tmp.%s' % (config['authorized_keys_file'], os.getpid())
+    with open(temp_fn, 'w') as f:
         os.fchown(f.fileno(), f_uid, f_gid)
         f.write(authorized_keys_out)
+    os.rename(temp_fn, config['authorized_keys_file'])
 
     lock.close()
