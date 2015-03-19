@@ -222,6 +222,9 @@ class StoragePing():
                 filter_file.flush()
                 rsync_args.append('--filter=merge %s' % filter_file.name)
 
+            if 'bwlimit' in s and s['bwlimit']:
+                rsync_args.append('--bwlimit=%s' % s['bwlimit'])
+
             rsync_args.append('rsync://%s@127.0.0.1:%d/%s/' % (source_username, forwarded_port, source_name))
 
             rsync_args.append('%s/' % dest_dir)
