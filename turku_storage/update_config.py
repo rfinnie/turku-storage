@@ -84,6 +84,8 @@ def main(argv):
     else:
         # XXX legacy
         api_out['auth'] = config['api_auth']
+    if 'published' in config:
+        api_out['storage']['published'] = config['published']
 
     api_reply = api_call(config['api_url'], 'storage_update_config', api_out)
 
