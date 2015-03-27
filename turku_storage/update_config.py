@@ -65,7 +65,6 @@ def main(argv):
         space_available += s_a
 
     api_out = {
-        'auth': config['api_auth'],
         'storage': {
             'name': config['name'],
             'secret': config['secret'],
@@ -77,6 +76,14 @@ def main(argv):
             'space_available': space_available,
         },
     }
+    if ('api_auth_name' in config) and ('api_auth_secret' in config):
+        api_out['auth'] = {
+            'name': config['api_auth_name'],
+            'secret': config['api_auth_secret'],
+        }
+    else:
+        # XXX legacy
+        api_out['auth'] = config['api_auth']
 
     api_reply = api_call(config['api_url'], 'storage_update_config', api_out)
 

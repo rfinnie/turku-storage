@@ -152,22 +152,15 @@ def load_config(config_dir, writable=False):
             j = json.load(f)
         config = dict_merge(config, j)
 
-    required_keys = ['api_url', 'api_auth']
+    required_keys = ['api_url', 'volumes']
+    # XXX legacy
+    if 'api_auth' not in config:
+        required_keys += ['api_auth_name', 'api_auth_secret']
     if not writable:
         required_keys += ['name', 'secret']
     for k in required_keys:
         if k not in config:
             raise Exception('Incomplete config')
-    if ('volumes' not in config) and ('storage_dir' not in config):
-        raise Exception('Incomplete config')
-
-    # Handle legacy storage_dir config
-    if 'volumes' not in config:
-        config['volumes'] = {}
-    if 'storage_dir' in config:
-        config['volumes']['storage_dir'] = {
-            'path': config['storage_dir'],
-        }
 
     if 'accept_new_high_water_pct' not in config:
         config['accept_new_high_water_pct'] = 80
