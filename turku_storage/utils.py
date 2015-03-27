@@ -82,6 +82,15 @@ def json_dumps_p(obj):
     return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
 
 
+def json_load_file(file):
+    with open(file) as f:
+        try:
+            return json.load(f)
+        except ValueError, e:
+            e.args += (file,)
+            raise   
+
+
 def dict_merge(s, m):
     """Recursively merge one dict into another."""
     if not isinstance(m, dict):
@@ -148,9 +157,7 @@ def load_config(config_dir, writable=False):
     ]
     config_files.sort()
     for file in config_files:
-        with open(file) as f:
-            j = json.load(f)
-        config = dict_merge(config, j)
+        config = dict_merge(config, json_load_file(file))
 
     required_keys = ['api_url', 'volumes']
     # XXX legacy
