@@ -39,7 +39,7 @@ def main(argv):
     if args.wait:
         time.sleep(random.uniform(0, args.wait))
 
-    config = load_config(args.config_dir, writable=True)
+    config = load_config(args.config_dir)
 
     lock = acquire_lock(os.path.join(config['lock_dir'], 'turku-storage-update-config.lock'))
 

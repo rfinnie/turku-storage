@@ -26,8 +26,6 @@ import glob
 import pwd
 import datetime
 import re
-import string
-import platform
 
 
 class RuntimeLock():
@@ -88,7 +86,7 @@ def json_load_file(file):
             return json.load(f)
         except ValueError, e:
             e.args += (file,)
-            raise   
+            raise
 
 
 def dict_merge(s, m):
@@ -145,7 +143,7 @@ def random_weighted(m):
             return k
 
 
-def load_config(config_dir, writable=False):
+def load_config(config_dir):
     config = {}
     config_d = os.path.join(config_dir, 'config.d')
     config_files = [
@@ -159,12 +157,10 @@ def load_config(config_dir, writable=False):
     for file in config_files:
         config = dict_merge(config, json_load_file(file))
 
-    required_keys = ['api_url', 'volumes']
+    required_keys = ['name', 'secret', 'api_url', 'volumes']
     # XXX legacy
     if 'api_auth' not in config:
         required_keys += ['api_auth_name', 'api_auth_secret']
-    if not writable:
-        required_keys += ['name', 'secret']
     for k in required_keys:
         if k not in config:
             raise Exception('Incomplete config')
@@ -183,19 +179,6 @@ def load_config(config_dir, writable=False):
 
     if len(config['volumes']) == 0:
         raise Exception('Incomplete config')
-
-    if writable:
-        write_name_data = False
-        if 'name' not in config:
-            config['name'] = platform.node()
-            write_name_data = True
-        if 'secret' not in config:
-            config['secret'] = ''.join(random.choice(string.ascii_letters + string.digits) for i in range(30))
-            write_name_data = True
-        if write_name_data:
-            with open(os.path.join(config_d, '10-name.json'), 'w') as f:
-                os.chmod(os.path.join(config_d, '10-name.json'), 0o600)
-                json_dump_p({'name': config['name'], 'secret': config['secret']}, f)
 
     if 'log_file' not in config:
         config['log_file'] = '/var/log/turku-storage.log'
