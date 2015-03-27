@@ -101,14 +101,18 @@ class StoragePing():
             return
 
         api_out = {
-            'name': self.config['name'],
-            'secret': self.config['secret'],
-            'machine_uuid': self.arg_uuid,
+            'storage': {
+                'name': self.config['name'],
+                'secret': self.config['secret'],
+            },
+            'machine': {
+                'uuid': self.arg_uuid,
+            },
         }
         api_reply = api_call(self.config['api_url'], 'storage_ping_checkin', api_out)
 
         machine = api_reply['machine']
-        scheduled_sources = api_reply['scheduled_sources']
+        scheduled_sources = machine['scheduled_sources']
         if len(scheduled_sources) > 0:
             self.logger.info('Sources to back up: %s' % ', '.join([s for s in scheduled_sources]))
         else:
@@ -282,16 +286,21 @@ class StoragePing():
 
             time_end = time.time()
             api_out = {
-                'name': self.config['name'],
-                'secret': self.config['secret'],
-                'machine_uuid': self.arg_uuid,
-                'source_name': source_name,
-                'success': success,
-                'backup_data': {
-                    'snapshot': snapshot_name,
-                    'summary': summary_output,
-                    'time_begin': time_begin,
-                    'time_end': time_end,
+                'storage': {
+                    'name': self.config['name'],
+                    'secret': self.config['secret'],
+                },
+                'machine': {
+                    'uuid': self.arg_uuid,
+                    'sources': {
+                        source_name: {
+                            'success': success,
+                            'snapshot': snapshot_name,
+                            'summary': summary_output,
+                            'time_begin': time_begin,
+                            'time_end': time_end,
+                        },
+                    },
                 },
             }
             api_reply = api_call(self.config['api_url'], 'storage_ping_source_update', api_out)
