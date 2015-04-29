@@ -180,12 +180,9 @@ class StoragePing():
             if 'environment_name' in machine and machine['environment_name']:
                 machine_symlink = machine['environment_name'] + '-' + machine_symlink
             machine_symlink = machine_symlink.replace('/', '_')
-            if os.path.exists(os.path.join(var_machines, machine_symlink)):
-                if os.path.islink(os.path.join(var_machines, machine_symlink)):
-                    if not os.readlink(os.path.join(var_machines, machine_symlink)) == machine['uuid']:
-                        os.unlink(os.path.join(var_machines, machine_symlink))
-                        os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
-            else:
+            if os.path.islink(os.path.join(var_machines, machine_symlink)):
+                os.unlink(os.path.join(var_machines, machine_symlink))
+            if not os.path.exists(os.path.join(var_machines, machine_symlink)):
                 os.symlink(machine['uuid'], os.path.join(var_machines, machine_symlink))
 
             self.logger.info('Begin: %s %s' % (machine['unit_name'], source_name))
@@ -269,11 +266,9 @@ class StoragePing():
                         summary_output = summary_output + 'Base snapshot: %s\n' % base_snapshot
                     snapshot_name = datetime.datetime.now().isoformat()
                     os.rename(dest_dir, os.path.join(snapshot_dir, snapshot_name))
-                    if os.path.exists(os.path.join(snapshot_dir, 'latest')):
-                        if os.path.islink(os.path.join(snapshot_dir, 'latest')):
-                            os.unlink(os.path.join(snapshot_dir, 'latest'))
-                            os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
-                    else:
+                    if os.path.islink(os.path.join(snapshot_dir, 'latest')):
+                        os.unlink(os.path.join(snapshot_dir, 'latest'))
+                    if not os.path.exists(os.path.join(snapshot_dir, 'latest')):
                         os.symlink(snapshot_name, os.path.join(snapshot_dir, 'latest'))
                     if 'retention' in s:
                         dirs = [d for d in os.listdir(snapshot_dir) if os.path.isdir(os.path.join(snapshot_dir, d))]
