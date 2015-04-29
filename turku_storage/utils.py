@@ -263,9 +263,12 @@ def get_snapshots_to_delete(retention, snapshots):
     to_keep = []
     for ritem in retention.split(','):
         ritem = ritem.strip()
-        r = re.findall('^earliest of (\d+) (day|week|month)', ritem)
+        r = re.findall('^earliest of (?:(\d+) )?(day|week|month)', ritem)
         if len(r) > 0:
-            earliest_num = int(r[0][0])
+            if r[0][0] == '':
+                earliest_num = 1
+            else:
+                earliest_num = int(r[0][0])
             earliest_word = r[0][1]
             if earliest_word == 'fortnight':
                 earliest_word = 'week'
