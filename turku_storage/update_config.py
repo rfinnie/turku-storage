@@ -90,6 +90,7 @@ def main(argv):
     api_reply = api_call(config['api_url'], 'storage_update_config', api_out)
 
     authorized_keys_out = '# Automatically generated, please do not edit\n'
+    authorized_keys_out += '# Local additions may be placed in %s.static\n' % config['authorized_keys_file']
     if os.path.isfile(config['authorized_keys_file'] + '.static'):
         with open(config['authorized_keys_file'] + '.static') as f:
             authorized_keys_out += f.read()
