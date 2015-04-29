@@ -24,7 +24,6 @@ import re
 import logging
 import tempfile
 import time
-import shutil
 from utils import load_config, acquire_lock, api_call, random_weighted, get_latest_snapshot, get_snapshots_to_delete
 
 
@@ -277,7 +276,7 @@ class StoragePing():
                             temp_delete_tree = os.path.join(snapshot_dir, '_delete-%s' % snapshot)
                             os.rename(os.path.join(snapshot_dir, snapshot), temp_delete_tree)
                             # Should better handle this
-                            shutil.rmtree(temp_delete_tree, ignore_errors=True)
+                            subprocess.call(['rm', '-rf', temp_delete_tree])
                             summary_output = summary_output + 'Removed old snapshot: %s\n' % snapshot
             else:
                 summary_output = 'rsync exited with return code %d' % returncode
