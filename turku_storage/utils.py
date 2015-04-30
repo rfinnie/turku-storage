@@ -26,6 +26,7 @@ import glob
 import pwd
 import datetime
 import re
+import time
 
 
 class RuntimeLock():
@@ -210,6 +211,12 @@ def load_config(config_dir):
         config['authorized_keys_user'] = config['ssh_ping_user']
     if 'authorized_keys_command' not in config:
         config['authorized_keys_command'] = 'turku-storage-ping'
+
+    if 'timezone' not in config:
+        config['timezone'] = 'UTC'
+    if config['timezone']:
+        os.environ['TZ'] = config['timezone']
+    time.tzset()
 
     return config
 
