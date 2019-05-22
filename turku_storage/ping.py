@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Turku backups - storage module
 # Copyright 2015 Canonical Ltd.
 #
@@ -24,7 +22,7 @@ import re
 import logging
 import tempfile
 import time
-from utils import load_config, acquire_lock, api_call, random_weighted, get_latest_snapshot, get_snapshots_to_delete
+from .utils import load_config, acquire_lock, api_call, random_weighted, get_latest_snapshot, get_snapshots_to_delete
 
 
 class StoragePing():
@@ -53,13 +51,13 @@ class StoragePing():
 
     def run_logging(self, args, loglevel=logging.DEBUG, cwd=None, env=None, return_output=False):
         self.logger.log(loglevel, 'Running: %s' % repr(args))
-        t = tempfile.NamedTemporaryFile()
+        t = tempfile.NamedTemporaryFile(mode='w+', encoding='UTF-8')
         self.logger.log(loglevel, '(Command output is in %s until written here at the end)' % t.name)
         returncode = subprocess.call(args, cwd=cwd, env=env, stdout=t, stderr=t)
         t.flush()
         t.seek(0)
         out = ''
-        for line in t:
+        for line in t.readlines():
             if return_output:
                 out = out + line
             self.logger.log(loglevel, line.rstrip('\n'))
@@ -217,7 +215,7 @@ class StoragePing():
                 for exclude in s['exclude']:
                     filter_data += '- %s\n' % exclude
             if filter_data:
-                filter_file = tempfile.NamedTemporaryFile()
+                filter_file = tempfile.NamedTemporaryFile(mode='w+', encoding='UTF-8')
                 filter_file.write(filter_data)
                 filter_file.flush()
                 rsync_args.append('--filter=merge %s' % filter_file.name)
@@ -311,7 +309,7 @@ class StoragePing():
         try:
             return self.process_ping()
         except Exception as e:
-            self.logger.exception(e.message)
+            self.logger.exception(e)
             return 1
 
 
@@ -325,6 +323,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(argv):
+def main():
     args = parse_args()
     sys.exit(StoragePing(args.uuid, config_dir=args.config_dir).main())
