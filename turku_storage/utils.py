@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Turku backups - storage module
 # Copyright 2015 Canonical Ltd.
 #
@@ -16,8 +14,8 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import urlparse
-import httplib
+import urllib.parse
+import http.client
 import json
 import copy
 import random
@@ -38,7 +36,7 @@ class RuntimeLock():
         file = open(name, 'w')
         try:
             fcntl.lockf(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except IOError, e:
+        except IOError as e:
             import errno
             if e.errno in (errno.EACCES, errno.EAGAIN):
                 raise
@@ -85,7 +83,7 @@ def json_load_file(file):
     with open(file) as f:
         try:
             return json.load(f)
-        except ValueError, e:
+        except ValueError as e:
             e.args += (file,)
             raise
 
@@ -95,7 +93,7 @@ def dict_merge(s, m):
     if not isinstance(m, dict):
         return m
     out = copy.deepcopy(s)
-    for k, v in m.items():
+    for k, v in list(m.items()):
         if k in out and isinstance(out[k], dict):
             out[k] = dict_merge(out[k], v)
         else:
@@ -104,38 +102,38 @@ def dict_merge(s, m):
 
 
 def api_call(api_url, cmd, post_data, timeout=5):
-    url = urlparse.urlparse(api_url)
+    url = urllib.parse.urlparse(api_url)
     if url.scheme == 'https':
-        h = httplib.HTTPSConnection(url.netloc, timeout=timeout)
+        h = http.client.HTTPSConnection(url.netloc, timeout=timeout)
     else:
-        h = httplib.HTTPConnection(url.netloc, timeout=timeout)
+        h = http.client.HTTPConnection(url.netloc, timeout=timeout)
     out = json.dumps(post_data)
     h.putrequest('POST', '%s/%s' % (url.path, cmd))
     h.putheader('Content-Type', 'application/json')
     h.putheader('Content-Length', len(out))
     h.putheader('Accept', 'application/json')
     h.endheaders()
-    h.send(out)
+    h.send(out.encode('UTF-8'))
 
     res = h.getresponse()
-    if not res.status == httplib.OK:
+    if not res.status == http.client.OK:
         raise Exception('Received error %d (%s) from API server' % (res.status, res.reason))
     if not res.getheader('content-type') == 'application/json':
         raise Exception('Received invalid reply from API server')
     try:
-        return json.load(res)
+        return json.loads(res.read().decode('UTF-8'))
     except ValueError:
         raise Exception('Received invalid reply from API server')
 
 
 def random_weighted(m):
     """Return a weighted random key."""
-    total = sum([v for v in m.values()])
+    total = sum(list(m.values()))
     if total <= 0:
-        return random.choice(m.keys())
+        return random.choice(list(m.keys()))
     weighted = []
     tp = 0
-    for (k, v) in m.items():
+    for k, v in list(m.items()):
         tp = tp + (float(v) / float(total))
         weighted.append((k, tp))
     r = random.random()
@@ -255,7 +253,7 @@ def get_latest_snapshot(snapshots):
             pass
     if len(snapshot_dict) == 0:
         return None
-    return snapshot_dict[max(snapshot_dict.keys())]
+    return snapshot_dict[max(list(snapshot_dict.keys()))]
 
 
 def get_snapshots_to_delete(retention, snapshots):
@@ -306,7 +304,7 @@ def get_snapshots_to_delete(retention, snapshots):
                     datetime.timedelta(days=(earliest_num - 1))
                 )
             candidate_s = None
-            for s in snapshot_dict.keys():
+            for s in list(snapshot_dict.keys()):
                 if s < cutoff_time:
                     continue
                 if not candidate_s:
@@ -321,7 +319,7 @@ def get_snapshots_to_delete(retention, snapshots):
         if len(r) > 0:
             last_days = int(r[0])
             cutoff_time = (now - datetime.timedelta(days=last_days))
-            for s in snapshot_dict.keys():
+            for s in list(snapshot_dict.keys()):
                 if s < cutoff_time:
                     continue
                 if s not in to_keep:
@@ -330,7 +328,7 @@ def get_snapshots_to_delete(retention, snapshots):
         if len(r) > 0:
             last_snapshots = int(r[0])
             i = 0
-            for s in sorted(snapshot_dict.keys(), reverse=True):
+            for s in sorted(list(snapshot_dict.keys()), reverse=True):
                 i = i + 1
                 if s not in to_keep:
                     to_keep.append(s)
@@ -343,7 +341,7 @@ def get_snapshots_to_delete(retention, snapshots):
         return []
 
     to_delete = []
-    for s in snapshot_dict.keys():
+    for s in list(snapshot_dict.keys()):
         if s not in to_keep:
             to_delete.append(snapshot_dict[s])
     return to_delete

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Turku backups - storage module
 # Copyright 2015 Canonical Ltd.
 #
@@ -19,7 +17,7 @@ import os
 import time
 import random
 import pwd
-from utils import load_config, acquire_lock, api_call
+from .utils import load_config, acquire_lock, api_call
 
 
 def parse_args():
@@ -32,7 +30,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(argv):
+def main():
     args = parse_args()
 
     # Sleep a random amount of time if requested
