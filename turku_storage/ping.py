@@ -202,6 +202,8 @@ class StoragePing():
                     rsync_args.append('--link-dest=%s' % os.path.join(snapshot_dir, base_snapshot))
             else:
                 rsync_args.append('--inplace')
+            if self.config['preserve_hard_links']:
+                rsync_args.append('--hard-links')
 
             filter_file = None
             filter_data = ''
