@@ -188,6 +188,8 @@ def load_config(config_dir):
 
     if 'snapshot_mode' not in config:
         config['snapshot_mode'] = 'link-dest'
+    if 'preserve_hard_links' not in config:
+        config['preserve_hard_links'] = False
 
     if 'ssh_ping_host' not in config:
         config['ssh_ping_host'] = socket.getfqdn()
