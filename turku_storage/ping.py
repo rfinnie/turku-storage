@@ -190,9 +190,7 @@ class StoragePing():
             dest_dir = os.path.join(machine_dir, source_name)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
-            if snapshot_mode == 'attic':
-                rsync_args.append('--inplace')
-            elif snapshot_mode == 'link-dest':
+            if snapshot_mode == 'link-dest':
                 snapshot_dir = os.path.join(machine_dir, '%s.snapshots' % source_name)
                 if not os.path.exists(snapshot_dir):
                     os.makedirs(snapshot_dir)
@@ -243,23 +241,7 @@ class StoragePing():
             snapshot_name = None
             summary_output = None
             if success:
-                if snapshot_mode == 'attic':
-                    snapshot_name = datetime.datetime.now().isoformat()
-                    attic_dir = '%s.attic' % dest_dir
-                    if not os.path.exists(attic_dir):
-                        attic_args = ['attic', 'init', attic_dir]
-                        self.run_logging(attic_args)
-                    attic_args = ['attic', 'create', '--numeric-owner', '%s::%s' % (attic_dir, snapshot_name), '.']
-                    self.run_logging(attic_args, cwd=dest_dir)
-                    if 'retention' in s:
-                        attic_snapshots = re.findall('^([\w\.\-\:]+)', subprocess.check_output(['attic', 'list', attic_dir]), re.M)
-                        to_delete = get_snapshots_to_delete(s['retention'], attic_snapshots)
-                        for snapshot in to_delete:
-                            attic_args = ['attic', 'delete', '%s::%s' % (attic_dir, snapshot)]
-                            self.run_logging(attic_args)
-                    attic_args = ['attic', 'info', '%s::%s' % (attic_dir, snapshot_name)]
-                    (ret, summary_output) = self.run_logging(attic_args, return_output=True)
-                elif snapshot_mode == 'link-dest':
+                if snapshot_mode == 'link-dest':
                     summary_output = ''
                     if base_snapshot:
                         summary_output = summary_output + 'Base snapshot: %s\n' % base_snapshot
