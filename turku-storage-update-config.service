@@ -1,0 +1,6 @@
+[Unit]
+Description=turku-storage-update-config
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env turku-storage-update-config

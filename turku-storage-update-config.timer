@@ -1,0 +1,10 @@
+[Unit]
+Description=turku-storage-update-config
+
+[Timer]
+OnUnitActiveSec=5m
+RandomizedDelaySec=5m
+OnStartupSec=5m
+
+[Install]
+WantedBy=timers.target
