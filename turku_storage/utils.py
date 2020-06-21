@@ -26,6 +26,11 @@ import socket
 import time
 import urllib.parse
 
+try:
+    import requests
+except ImportError as e:
+    requests = e
+
 
 class RuntimeLock:
     name = None
@@ -103,7 +108,17 @@ def dict_merge(s, m):
     return out
 
 
-def api_call(api_url, cmd, post_data, timeout=5):
+def api_call_requests(api_url, cmd, post_data, timeout=5):
+    """Turku API call client (3rd party Python requests)"""
+    url = urllib.parse.urljoin(api_url + "/", cmd)
+    headers = {"Accept": "application/json"}
+    r = requests.post(url, json=post_data, headers=headers, timeout=timeout)
+    r.raise_for_status()
+    return r.json()
+
+
+def api_call_http_client(api_url, cmd, post_data, timeout=5):
+    """Turku API call client (built-in Python http.client)"""
     url = urllib.parse.urlparse(api_url)
     if url.scheme == "https":
         h = http.client.HTTPSConnection(url.netloc, timeout=timeout)
@@ -128,6 +143,18 @@ def api_call(api_url, cmd, post_data, timeout=5):
         return json.loads(res.read().decode("UTF-8"))
     except ValueError:
         raise Exception("Received invalid reply from API server")
+
+
+def api_call(api_url, cmd, post_data, timeout=5):
+    """Turku API call client
+
+    api_call_requests will be used if the requests module is available,
+    otherwise api_call_http_client.
+    """
+    if not isinstance(requests, ImportError):
+        return api_call_requests(api_url, cmd, post_data, timeout=timeout)
+    else:
+        return api_call_http_client(api_url, cmd, post_data, timeout=timeout)
 
 
 def random_weighted(m):
