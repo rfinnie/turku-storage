@@ -60,28 +60,21 @@ class StoragePing:
         self.lh_master.setLevel(logging.DEBUG)
         self.logger.addHandler(self.lh_master)
 
-    def run_logging(
-        self, args, loglevel=logging.DEBUG, cwd=None, env=None, return_output=False
-    ):
+    def run_logging(self, args, loglevel=logging.DEBUG, cwd=None, env=None):
         self.logger.log(loglevel, "Running: %s" % repr(args))
-        t = tempfile.NamedTemporaryFile(mode="w+", encoding="UTF-8")
-        self.logger.log(
-            loglevel, "(Command output is in %s until written here at the end)" % t.name
-        )
-        returncode = subprocess.call(args, cwd=cwd, env=env, stdout=t, stderr=t)
-        t.flush()
-        t.seek(0)
-        out = ""
-        for line in t.readlines():
-            if return_output:
-                out = out + line
-            self.logger.log(loglevel, line.rstrip("\n"))
-        t.close()
-        self.logger.log(loglevel, "Return code: %d" % returncode)
-        if return_output:
-            return (returncode, out)
-        else:
-            return returncode
+        with subprocess.Popen(
+            args,
+            cwd=cwd,
+            env=env,
+            encoding="UTF-8",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        ) as proc:
+            with proc.stdout as stdout:
+                for line in iter(stdout.readline, ""):
+                    self.logger.log(loglevel, line.rstrip("\n"))
+        self.logger.log(loglevel, "Return code: %d" % proc.returncode)
+        return proc.returncode
 
     def process_ping(self):
         jsonin = ""
