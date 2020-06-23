@@ -26,6 +26,7 @@ setup(
     url="https://launchpad.net/turku",
     python_requires="~=3.4",
     packages=["turku_storage"],
+    install_requires=["requests"],
     entry_points={
         "console_scripts": [
             "turku-storage-ping = turku_storage.ping:main",
