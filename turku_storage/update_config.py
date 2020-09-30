@@ -14,9 +14,13 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import pwd
 import random
 import time
+
+try:
+    import pwd
+except ImportError as e:
+    pwd = e
 
 from .utils import load_config, acquire_lock, api_call
 
@@ -109,15 +113,21 @@ def main():
             machine["unit_name"],
         )
 
-    f_uid = pwd.getpwnam(config["authorized_keys_user"]).pw_uid
-    f_gid = pwd.getpwnam(config["authorized_keys_user"]).pw_gid
+    if isinstance(pwd, ImportError):
+        f_uid = None
+        f_gid = None
+    else:
+        f_uid = pwd.getpwnam(config["authorized_keys_user"]).pw_uid
+        f_gid = pwd.getpwnam(config["authorized_keys_user"]).pw_gid
     keys_dirname = os.path.dirname(config["authorized_keys_file"])
     if not os.path.isdir(keys_dirname):
         os.makedirs(keys_dirname)
-        os.chown(keys_dirname, f_uid, f_gid)
+        if f_uid is not None:
+            os.chown(keys_dirname, f_uid, f_gid)
     temp_fn = "%s.tmp.%s" % (config["authorized_keys_file"], os.getpid())
     with open(temp_fn, "w") as f:
-        os.fchown(f.fileno(), f_uid, f_gid)
+        if f_uid is not None:
+            os.fchown(f.fileno(), f_uid, f_gid)
         f.write(authorized_keys_out)
     os.rename(temp_fn, config["authorized_keys_file"])
 

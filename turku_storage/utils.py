@@ -18,7 +18,6 @@ import datetime
 import glob
 import json
 import os
-import pwd
 import random
 import re
 import socket
@@ -195,8 +194,8 @@ def load_config(config_dir):
             with open(pubkey) as f:
                 config["ssh_ping_host_keys"].append(f.read().rstrip())
     if "authorized_keys_file" not in config:
-        config["authorized_keys_file"] = (
-            "%s/.ssh/authorized_keys" % pwd.getpwnam(config["ssh_ping_user"]).pw_dir
+        config["authorized_keys_file"] = os.path.expanduser(
+            "~{}/.ssh/authorized_keys".format(config["ssh_ping_user"])
         )
     if "authorized_keys_user" not in config:
         config["authorized_keys_user"] = config["ssh_ping_user"]
