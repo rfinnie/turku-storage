@@ -26,6 +26,11 @@ import urllib.parse
 
 import requests
 
+try:
+    import yaml
+except ImportError as e:
+    yaml = e
+
 
 class RuntimeLock:
     name = None
@@ -71,23 +76,16 @@ def acquire_lock(name):
     return RuntimeLock(name)
 
 
-def json_dump_p(obj, f):
-    """Calls json.dump with standard (pretty) formatting"""
-    return json.dump(obj, f, sort_keys=True, indent=4, separators=(",", ": "))
-
-
-def json_dumps_p(obj):
-    """Calls json.dumps with standard (pretty) formatting"""
-    return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
-
-
-def json_load_file(file):
+def config_load_file(file):
+    """Load and return a .json or (if available) .yaml configuration file"""
     with open(file) as f:
         try:
-            return json.load(f)
-        except ValueError as e:
-            e.args += (file,)
-            raise
+            if file.endswith(".yaml") and not isinstance(yaml, ImportError):
+                return yaml.safe_load(f)
+            else:
+                return json.load(f)
+        except Exception:
+            raise ValueError("Error loading {}".format(file))
 
 
 def dict_merge(s, m):
@@ -134,13 +132,16 @@ def load_config(config_dir):
     config_files = [
         os.path.join(config_d, fn)
         for fn in os.listdir(config_d)
-        if fn.endswith(".json")
+        if (
+            fn.endswith(".json")
+            or (fn.endswith(".yaml") and not isinstance(yaml, ImportError))
+        )
         and os.path.isfile(os.path.join(config_d, fn))
         and os.access(os.path.join(config_d, fn), os.R_OK)
     ]
     config_files.sort()
     for file in config_files:
-        config = dict_merge(config, json_load_file(file))
+        config = dict_merge(config, config_load_file(file))
 
     required_keys = ["name", "secret", "api_url", "volumes"]
     # XXX legacy
