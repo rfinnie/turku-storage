@@ -23,6 +23,7 @@ import re
 import socket
 import time
 import urllib.parse
+import uuid
 
 import requests
 
@@ -99,6 +100,43 @@ def dict_merge(s, m):
         else:
             out[k] = copy.deepcopy(v)
     return out
+
+
+class SafeWrite:
+    """(Try to) safely write files with minimum collision possibility"""
+
+    filename = None
+    temp_filename = None
+    file = None
+
+    def __init__(self, filename, filemode=None):
+        self.filename = filename
+        self.temp_filename = "{}.tmp{}~".format(self.filename, str(uuid.uuid4()))
+        self.file = open(self.temp_filename, "w")
+        if filemode is not None:
+            os.fchmod(self.file.fileno(), filemode)
+        for m in dir(self.file):
+            if m.startswith("_"):
+                continue
+            if m == "close":
+                continue
+            setattr(self, m, getattr(self.file, m))
+
+    def close(self):
+        if not self.file:
+            return
+        self.file.close()
+        self.file = None
+        os.rename(self.temp_filename, self.filename)
+
+    def __del__(self):
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc, value, tb):
+        self.close()
 
 
 def api_call(api_url, cmd, post_data, timeout=5):

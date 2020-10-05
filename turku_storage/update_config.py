@@ -22,7 +22,7 @@ try:
 except ImportError as e:
     pwd = e
 
-from .utils import load_config, acquire_lock, api_call
+from .utils import load_config, acquire_lock, api_call, SafeWrite
 
 
 def parse_args():
@@ -124,11 +124,9 @@ def main():
         os.makedirs(keys_dirname)
         if f_uid is not None:
             os.chown(keys_dirname, f_uid, f_gid)
-    temp_fn = "%s.tmp.%s" % (config["authorized_keys_file"], os.getpid())
-    with open(temp_fn, "w") as f:
+    with SafeWrite(config["authorized_keys_file"]) as f:
         if f_uid is not None:
             os.fchown(f.fileno(), f_uid, f_gid)
         f.write(authorized_keys_out)
-    os.rename(temp_fn, config["authorized_keys_file"])
 
     lock.close()
