@@ -1,5 +1,5 @@
 # Turku backups - storage module
-# Copyright 2015 Canonical Ltd.
+# Copyright (C) 2015-2020 Canonical Ltd., Ryan Finnie and other contributors
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 3, as published by

@@ -1,5 +1,6 @@
 include Makefile
 include README.md
+include LICENSE.md
 include requirements.txt
 include tests/*.py
 include tox.ini
