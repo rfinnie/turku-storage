@@ -1,4 +1,5 @@
 PYTHON := python3
+SYSTEMD_SYSTEM := /etc/systemd/system
 
 all: build
 
@@ -22,6 +23,12 @@ black:
 
 install: build
 	$(PYTHON) setup.py install
+
+install-systemd:
+	install -m 0644 turku-storage-update-config.service $(SYSTEMD_SYSTEM)/turku-storage-update-config.service
+	install -m 0644 turku-storage-update-config.timer $(SYSTEMD_SYSTEM)/turku-storage-update-config.timer
+	systemctl enable turku-storage-update-config.timer
+	systemctl start turku-storage-update-config.timer
 
 clean:
 	$(PYTHON) setup.py clean
