@@ -181,7 +181,10 @@ def load_config(config_dir):
     if "log_file" not in config:
         config["log_file"] = "/var/log/turku-storage.log"
     if "lock_dir" not in config:
-        config["lock_dir"] = "/var/lock"
+        for dir in ("/run/lock", "/var/lock", "/run", "/var/run", "/tmp"):
+            if os.path.exists(dir):
+                config["lock_dir"] = dir
+                break
     if "var_dir" not in config:
         config["var_dir"] = "/var/lib/turku-storage"
 
