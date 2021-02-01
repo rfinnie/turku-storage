@@ -1,7 +1,7 @@
 # Turku backups - storage module
 # Copyright (C) 2015-2020 Canonical Ltd., Ryan Finnie and other contributors
 #
-# SPDX-License-Identifer: GPL-3.0-or-later
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 import copy
 import datetime
