@@ -1,9 +1,0 @@
-/var/log/turku-storage.log {
-	weekly
-	maxsize 1G
-	missingok
-	rotate 12
-	compress
-	notifempty
-	nocreate
-}

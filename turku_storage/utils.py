@@ -179,7 +179,7 @@ def load_config(config_dir):
         raise Exception("Incomplete config")
 
     if "log_file" not in config:
-        config["log_file"] = "/var/log/turku-storage.log"
+        config["log_file"] = "syslog"
     if "lock_dir" not in config:
         for dir in ("/run/lock", "/var/lock", "/run", "/var/run", "/tmp"):
             if os.path.exists(dir):

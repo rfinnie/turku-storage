@@ -6,7 +6,9 @@
 import datetime
 import json
 import logging
+import logging.handlers
 import os
+import platform
 import subprocess
 import sys
 import tempfile
@@ -42,13 +44,30 @@ class StoragePing:
         self.lh_console.setLevel(logging.ERROR)
         self.logger.addHandler(self.lh_console)
 
-        self.lh_master = logging.FileHandler(self.config["log_file"])
-        self.lh_master_formatter = logging.Formatter(
-            "[%(asctime)s " + self.arg_uuid + " %(process)s] %(levelname)s: %(message)s"
-        )
-        self.lh_master.setFormatter(self.lh_master_formatter)
-        self.lh_master.setLevel(logging.DEBUG)
-        self.logger.addHandler(self.lh_master)
+        if self.config["log_file"] == "syslog":
+            self.lh_local = logging.handlers.SysLogHandler()
+            self.lh_local_formatter = logging.Formatter(
+                platform.node()
+                + " turku-storage-ping[%(process)s] (%(name)s) "
+                + self.arg_uuid
+                + ": %(message)s"
+            )
+        elif self.config["log_file"]:
+            self.lh_local = logging.FileHandler(self.config["log_file"])
+            self.lh_local_formatter = logging.Formatter(
+                "%(asctime)s "
+                + platform.node()
+                + " turku-storage-ping[%(process)s] (%(name)s) "
+                + self.arg_uuid
+                + ": %(message)s"
+            )
+        else:
+            self.lh_local = None
+            self.lh_local_formatter = None
+        if self.lh_local:
+            self.lh_local.setFormatter(self.lh_local_formatter)
+            self.lh_local.setLevel(logging.DEBUG)
+            self.logger.addHandler(self.lh_local)
 
     def run_logging(self, args, loglevel=logging.DEBUG, cwd=None, env=None):
         self.logger.log(loglevel, "Running: %s" % repr(args))

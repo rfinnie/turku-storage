@@ -5,7 +5,6 @@ include requirements.txt
 include tests/*.py
 include tox.ini
 include turku-storage.cron
-include turku-storage.logrotate
 include turku-storage-ping
 include turku-storage-update-config
 include turku-storage-update-config.service
