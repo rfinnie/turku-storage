@@ -18,6 +18,11 @@ import uuid
 import requests
 
 try:
+    import systemd.daemon as systemd_daemon
+except ImportError as e:
+    systemd_daemon = e
+
+try:
     import yaml
 except ImportError as e:
     yaml = e
@@ -179,7 +184,10 @@ def load_config(config_dir):
         raise Exception("Incomplete config")
 
     if "log_file" not in config:
-        config["log_file"] = "syslog"
+        if (not isinstance(systemd_daemon, ImportError)) and systemd_daemon.booted():
+            config["log_file"] = "systemd"
+        else:
+            config["log_file"] = "syslog"
     if "lock_dir" not in config:
         for dir in ("/run/lock", "/var/lock", "/run", "/var/run", "/tmp"):
             if os.path.exists(dir):

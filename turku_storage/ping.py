@@ -14,6 +14,11 @@ import sys
 import tempfile
 import time
 
+try:
+    import systemd.journal as systemd_journal
+except ImportError as e:
+    systemd_journal = e
+
 from .utils import (
     load_config,
     acquire_lock,
@@ -44,13 +49,21 @@ class StoragePing:
         self.lh_console.setLevel(logging.ERROR)
         self.logger.addHandler(self.lh_console)
 
-        if self.config["log_file"] == "syslog":
+        if self.config["log_file"] == "systemd" and (
+            not isinstance(systemd_journal, ImportError)
+        ):
+            self.lh_local = systemd_journal.JournalHandler(
+                SYSLOG_IDENTIFIER="turku-storage-ping"
+            )
+            self.lh_local_formatter = logging.Formatter(
+                "%(name)s {}: %(message)s".format(self.arg_uuid)
+            )
+        elif self.config["log_file"] == "syslog":
             self.lh_local = logging.handlers.SysLogHandler()
             self.lh_local_formatter = logging.Formatter(
-                platform.node()
-                + " turku-storage-ping[%(process)s] (%(name)s) "
-                + self.arg_uuid
-                + ": %(message)s"
+                "{} turku-storage-ping[%(process)s] %(name)s {}: %(message)s".format(
+                    platform.node(), self.arg_uuid
+                )
             )
         elif self.config["log_file"]:
             self.lh_local = logging.FileHandler(self.config["log_file"])
