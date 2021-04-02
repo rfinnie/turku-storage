@@ -94,7 +94,7 @@ class StoragePing:
         ) as proc:
             with proc.stdout as stdout:
                 for line in iter(stdout.readline, ""):
-                    self.logger.log(loglevel, line.rstrip("\n"))
+                    self.logger.log(loglevel, line.rstrip())
         self.logger.log(loglevel, "Return code: %d" % proc.returncode)
         return proc.returncode
 
@@ -102,7 +102,7 @@ class StoragePing:
         jsonin = ""
         while True:
             line = sys.stdin.readline()
-            if (line == ".\n") or (not line):
+            if (not line) or (line.rstrip() == "."):
                 break
             jsonin = jsonin + line
         try:
