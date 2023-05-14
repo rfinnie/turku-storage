@@ -25,6 +25,8 @@ def parse_args():
     parser.add_argument("--config-dir", "-c", type=str, default="/etc/turku-storage")
     parser.add_argument("--wait", "-w", type=float)
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--api-auth-name")
+    parser.add_argument("--api-auth-secret")
     return parser.parse_args()
 
 
@@ -74,13 +76,21 @@ def main():
             "space_available": space_available,
         }
     }
-    if ("api_auth_name" in config) and ("api_auth_secret" in config):
+    # API auth is only needed on initial storage registration
+    if args.api_auth_name and args.api_auth_secret:
+        # name/secret style, provided on command line
+        api_out["auth"] = {
+            "name": args.api_auth_name,
+            "secret": args.api_auth_secret,
+        }
+    elif ("api_auth_name" in config) and ("api_auth_secret" in config):
+        # name/secret style
         api_out["auth"] = {
             "name": config["api_auth_name"],
             "secret": config["api_auth_secret"],
         }
-    else:
-        # XXX legacy
+    elif "api_auth" in config:
+        # nameless secret style
         api_out["auth"] = config["api_auth"]
     if "published" in config:
         api_out["storage"]["published"] = config["published"]

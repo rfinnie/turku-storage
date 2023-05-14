@@ -174,9 +174,6 @@ def load_config(config_dir):
         config = dict_merge(config, config_load_file(file))
 
     required_keys = ["name", "secret", "api_url", "volumes"]
-    # XXX legacy
-    if "api_auth" not in config:
-        required_keys += ["api_auth_name", "api_auth_secret"]
     for k in required_keys:
         if k not in config:
             raise Exception("Incomplete config")
