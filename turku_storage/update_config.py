@@ -3,6 +3,7 @@
 # SPDX-FileCopyrightText: Copyright (C) 2015-2021 Ryan Finnie <ryan@finnie.org>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import logging
 import os
 import random
 import time
@@ -23,11 +24,14 @@ def parse_args():
     )
     parser.add_argument("--config-dir", "-c", type=str, default="/etc/turku-storage")
     parser.add_argument("--wait", "-w", type=float)
+    parser.add_argument("--debug", action="store_true")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    logging.basicConfig(level=(logging.DEBUG if args.debug else logging.INFO))
 
     # Sleep a random amount of time if requested
     if args.wait:

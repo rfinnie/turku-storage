@@ -9,6 +9,7 @@ import errno
 import fcntl
 import glob
 import json
+import logging
 import os
 import random
 import re
@@ -131,9 +132,12 @@ def api_call(api_url, cmd, post_data, timeout=5):
     """Turku API call client"""
     url = urllib.parse.urljoin(api_url + "/", cmd)
     headers = {"Accept": "application/json"}
+    logging.debug("API request: {} {}".format(url, post_data))
     r = requests.post(url, json=post_data, headers=headers, timeout=timeout)
     r.raise_for_status()
-    return r.json()
+    response_json = r.json()
+    logging.debug("API response: {} {}".format(r.status_code, response_json))
+    return response_json
 
 
 def random_weighted(m):
