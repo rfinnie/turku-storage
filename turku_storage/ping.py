@@ -129,7 +129,10 @@ class StoragePing:
             self.logger.info(
                 "Restore mode active on port %d.  Good luck." % forwarded_port
             )
-            subprocess.call(["/bin/cat"])
+
+            while sys.stdin.read():
+                pass
+            self.logger.info("Restore mode finished")
             return
 
         api_out = {
@@ -323,7 +326,8 @@ class StoragePing:
                             os.rename(
                                 os.path.join(snapshot_dir, snapshot), temp_delete_tree
                             )
-                            # Should better handle this
+                            # A subprocess call is used here instead of shutil.rmtree
+                            # as the latter can be very slow, especially for large trees.
                             subprocess.call(["rm", "-rf", temp_delete_tree])
                             summary_output = (
                                 summary_output + "Removed old snapshot: %s\n" % snapshot
