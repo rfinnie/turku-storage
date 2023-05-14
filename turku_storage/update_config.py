@@ -12,7 +12,7 @@ try:
 except ImportError as e:
     pwd = e
 
-from .utils import load_config, acquire_lock, api_call, safe_write
+from .utils import load_config, RuntimeLock, api_call, safe_write
 
 
 def parse_args():
@@ -35,9 +35,7 @@ def main():
 
     config = load_config(args.config_dir)
 
-    lock = acquire_lock(
-        os.path.join(config["lock_dir"], "turku-storage-update-config.lock")
-    )
+    lock = RuntimeLock(lock_dir=config["lock_dir"])
 
     space_total = 0
     space_available = 0

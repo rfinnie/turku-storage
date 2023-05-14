@@ -21,7 +21,7 @@ except ImportError as e:
 
 from .utils import (
     load_config,
-    acquire_lock,
+    RuntimeLock,
     api_call,
     random_weighted,
     get_latest_snapshot,
@@ -110,10 +110,9 @@ class StoragePing:
         except ValueError:
             raise Exception("Invalid input JSON")
 
-        lock = acquire_lock(
-            os.path.join(
-                self.config["lock_dir"], "turku-storage-ping-%s.lock" % self.arg_uuid
-            )
+        lock = RuntimeLock(
+            name="turku-storage-ping-{}".format(self.arg_uuid),
+            lock_dir=self.config["lock_dir"],
         )
 
         if "port" not in j:
