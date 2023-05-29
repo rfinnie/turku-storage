@@ -159,7 +159,7 @@ def random_weighted(m):
         tp = tp + (float(v) / float(total))
         weighted.append((k, tp))
     r = random.random()
-    for (k, v) in weighted:
+    for k, v in weighted:
         if r < v:
             return k
 
