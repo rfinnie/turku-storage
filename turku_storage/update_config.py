@@ -89,9 +89,6 @@ def main():
             "name": config["api_auth_name"],
             "secret": config["api_auth_secret"],
         }
-    elif "api_auth" in config:
-        # nameless secret style
-        api_out["auth"] = config["api_auth"]
     if "published" in config:
         api_out["storage"]["published"] = config["published"]
 
