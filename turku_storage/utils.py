@@ -132,11 +132,19 @@ def api_call(api_url, cmd, post_data, timeout=5):
     """Turku API call client"""
     url = urllib.parse.urljoin(api_url + "/", cmd)
     headers = {"Accept": "application/json"}
-    logging.debug("API request: {} {}".format(url, post_data))
+    logging.debug(
+        "API request: {} {}".format(
+            url, json.dumps(post_data, sort_keys=True, indent=4)
+        )
+    )
     r = requests.post(url, json=post_data, headers=headers, timeout=timeout)
     r.raise_for_status()
     response_json = r.json()
-    logging.debug("API response: {} {}".format(r.status_code, response_json))
+    logging.debug(
+        "API response: {} {}".format(
+            r.status_code, json.dumps(response_json, sort_keys=True, indent=4)
+        )
+    )
     return response_json
 
 
