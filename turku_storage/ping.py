@@ -8,11 +8,13 @@ import json
 import logging
 import logging.handlers
 import os
+import pathlib
 import platform
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 
 try:
     import systemd.journal as systemd_journal
@@ -26,6 +28,7 @@ from .utils import (
     random_weighted,
     get_latest_snapshot,
     get_snapshots_to_delete,
+    get_snapshots_from_dir,
 )
 
 
@@ -246,15 +249,11 @@ class StoragePing:
                 snapshot_dir = os.path.join(machine_dir, "%s.snapshots" % source_name)
                 if not os.path.exists(snapshot_dir):
                     os.makedirs(snapshot_dir)
-                dirs = [
-                    d
-                    for d in os.listdir(snapshot_dir)
-                    if os.path.isdir(os.path.join(snapshot_dir, d))
-                ]
-                base_snapshot = get_latest_snapshot(dirs)
+                snapshots = get_snapshots_from_dir(pathlib.Path(snapshot_dir))
+                base_snapshot = get_latest_snapshot(snapshots)
                 if base_snapshot:
                     rsync_args.append(
-                        "--link-dest=%s" % os.path.join(snapshot_dir, base_snapshot)
+                        "--link-dest={}".format(base_snapshot["directory"])
                     )
             else:
                 rsync_args.append("--inplace")
@@ -289,7 +288,9 @@ class StoragePing:
             rsync_args.append("%s/" % dest_dir)
 
             rsync_env = {"RSYNC_PASSWORD": source_password}
+            sync_begin = datetime.datetime.now().astimezone()
             returncode = self.run_logging(rsync_args, env=rsync_env)
+            sync_finish = datetime.datetime.now().astimezone()
             if returncode in (0, 24):
                 success = True
             else:
@@ -303,34 +304,44 @@ class StoragePing:
                 if snapshot_mode == "link-dest":
                     summary_output = ""
                     if base_snapshot:
-                        summary_output = (
-                            summary_output + "Base snapshot: %s\n" % base_snapshot
+                        summary_output += "Base snapshot: {}\n".format(
+                            base_snapshot["name"]
                         )
-                    snapshot_name = datetime.datetime.now().isoformat()
+                    snapshot_name = "{}_{}_{}".format(
+                        source_name,
+                        sync_finish.strftime("%Y%m%d-%H%M%S"),
+                        str(uuid.uuid4())[0:4],
+                    )
                     os.rename(dest_dir, os.path.join(snapshot_dir, snapshot_name))
+                    info_out = {
+                        "name": snapshot_name,
+                        "base": (base_snapshot["name"] if base_snapshot else None),
+                        "sync_begin": sync_begin.isoformat(),
+                        "sync_finish": sync_finish.isoformat(),
+                    }
+                    with open(
+                        os.path.join(snapshot_dir, "{}.json".format(snapshot_name)), "w"
+                    ) as f:
+                        json.dump(info_out, f, sort_keys=True, indent=4)
                     if os.path.islink(os.path.join(snapshot_dir, "latest")):
                         os.unlink(os.path.join(snapshot_dir, "latest"))
                     if not os.path.exists(os.path.join(snapshot_dir, "latest")):
                         os.symlink(snapshot_name, os.path.join(snapshot_dir, "latest"))
                     if "retention" in s:
-                        dirs = [
-                            d
-                            for d in os.listdir(snapshot_dir)
-                            if os.path.isdir(os.path.join(snapshot_dir, d))
-                        ]
-                        to_delete = get_snapshots_to_delete(s["retention"], dirs)
+                        snapshots = get_snapshots_from_dir(pathlib.Path(snapshot_dir))
+                        to_delete = get_snapshots_to_delete(s["retention"], snapshots)
                         for snapshot in to_delete:
-                            temp_delete_tree = os.path.join(
-                                snapshot_dir, "_delete-%s" % snapshot
+                            temp_delete_tree = snapshot["directory"].parent.joinpath(
+                                "_delete-{}".format(snapshot["directory"].parts[-1])
                             )
-                            os.rename(
-                                os.path.join(snapshot_dir, snapshot), temp_delete_tree
-                            )
+                            if snapshot["info_file"].exists():
+                                snapshot["info_file"].unlink()
+                            snapshot["directory"].rename(temp_delete_tree)
                             # A subprocess call is used here instead of shutil.rmtree
                             # as the latter can be very slow, especially for large trees.
-                            subprocess.call(["rm", "-rf", temp_delete_tree])
-                            summary_output = (
-                                summary_output + "Removed old snapshot: %s\n" % snapshot
+                            subprocess.call(["rm", "-rf", str(temp_delete_tree)])
+                            summary_output += "Removed old snapshot: {}\n".format(
+                                snapshot["name"]
                             )
             else:
                 summary_output = "rsync exited with return code %d" % returncode

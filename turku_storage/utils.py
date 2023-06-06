@@ -264,41 +264,77 @@ def parse_snapshot_name(ss):
     if ss == "working":
         raise ValueError("Excluded snapshot")
     try:
-        return datetime.datetime.strptime(ss, "%Y-%m-%dT%H:%M:%S.%f")
+        return datetime.datetime.strptime(ss, "%Y-%m-%dT%H:%M:%S.%f").astimezone()
     except ValueError:
         pass
     try:
-        return datetime.datetime.strptime(ss, "%Y-%m-%dT%H:%M:%S")
+        return datetime.datetime.strptime(ss, "%Y-%m-%dT%H:%M:%S").astimezone()
     except ValueError:
         pass
     try:
-        return datetime.datetime.utcfromtimestamp(float(ss))
+        return datetime.datetime.fromtimestamp(float(ss)).astimezone()
     except ValueError:
         pass
     raise ValueError("Unknown snapshot name format")
 
 
 def get_latest_snapshot(snapshots):
-    snapshot_dict = {}
-    for ss in snapshots:
-        try:
-            snapshot_dict[parse_snapshot_name(ss)] = ss
-        except ValueError:
-            pass
-    if len(snapshot_dict) == 0:
+    if len(snapshots) == 0:
         return None
-    return snapshot_dict[max(list(snapshot_dict.keys()))]
+    return sorted(snapshots, key=lambda x: x["sync_finish"])[-1]
+
+
+def get_snapshots_from_dir(snapshots_dir):
+    snapshots = []
+    for snapshot_dir in snapshots_dir.iterdir():
+        dir = snapshot_dir.parts[-1]
+        if not snapshot_dir.is_dir():
+            continue
+        try:
+            dir_time_parsed = parse_snapshot_name(dir)
+        except ValueError:
+            dir_time_parsed = None
+        json_info_fn = snapshots_dir.parent.joinpath("{}.json".format(dir))
+        if json_info_fn.is_file():
+            with json_info_fn.open() as f:
+                snapshot_info = json.load(f)
+            snapshot_info["directory"] = snapshot_dir
+            snapshot_info["info_file"] = json_info_fn
+            if snapshot_info.get("sync_begin"):
+                snapshot_info["sync_begin"] = datetime.datetime.fromisoformat(
+                    snapshot_info["sync_begin"]
+                )
+            else:
+                snapshot_info["sync_begin"] = None
+            if snapshot_info.get("sync_finish"):
+                snapshot_info["sync_finish"] = datetime.datetime.fromisoformat(
+                    snapshot_info["sync_finish"]
+                )
+            else:
+                snapshot_info["sync_finish"] = dir_time_parsed
+            if not snapshot_info.get("name"):
+                snapshot_info["name"] = dir
+            if not snapshot_info.get("base"):
+                snapshot_info["base"] = None
+            if not snapshot_info["sync_finish"]:
+                continue
+            snapshots.append(snapshot_info)
+        elif dir_time_parsed:
+            snapshots.append(
+                {
+                    "name": dir,
+                    "directory": snapshot_dir,
+                    "info_file": None,
+                    "sync_begin": None,
+                    "sync_finish": dir_time_parsed,
+                    "base": None,
+                }
+            )
+    return snapshots
 
 
 def get_snapshots_to_delete(retention, snapshots):
-    snapshot_dict = {}
-    for ss in snapshots:
-        try:
-            snapshot_dict[parse_snapshot_name(ss)] = ss
-        except ValueError:
-            pass
-
-    now = datetime.datetime.now()
+    now = datetime.datetime.now().astimezone()
     to_keep = []
     for ritem in retention.split(","):
         ritem = ritem.strip()
@@ -336,35 +372,37 @@ def get_snapshots_to_delete(retention, snapshots):
                 cutoff_time = now.replace(
                     hour=0, minute=0, second=0, microsecond=0
                 ) - datetime.timedelta(days=(earliest_num - 1))
-            candidate_s = None
-            for s in list(snapshot_dict.keys()):
-                if s < cutoff_time:
+            candidate_snapshot = None
+            for snapshot in snapshots:
+                if snapshot["sync_finish"] < cutoff_time:
                     continue
-                if not candidate_s:
-                    candidate_s = s
+                if not candidate_snapshot:
+                    candidate_snapshot = snapshot
                     continue
-                if s >= candidate_s:
+                if snapshot["sync_finish"] >= candidate_snapshot["sync_finish"]:
                     continue
-                candidate_s = s
-            if candidate_s and candidate_s not in to_keep:
-                to_keep.append(candidate_s)
+                candidate_snapshot = snapshot
+            if candidate_snapshot and candidate_snapshot not in to_keep:
+                to_keep.append(candidate_snapshot)
         r = re.findall(r"^last (\d+) day", ritem)
         if len(r) > 0:
             last_days = int(r[0])
             cutoff_time = now - datetime.timedelta(days=last_days)
-            for s in list(snapshot_dict.keys()):
-                if s < cutoff_time:
+            for snapshot in snapshots:
+                if snapshot["sync_finish"] < cutoff_time:
                     continue
-                if s not in to_keep:
-                    to_keep.append(s)
+                if snapshot not in to_keep:
+                    to_keep.append(snapshot)
         r = re.findall(r"^last (\d+) snapshot", ritem)
         if len(r) > 0:
             last_snapshots = int(r[0])
             i = 0
-            for s in sorted(list(snapshot_dict.keys()), reverse=True):
+            for snapshot in sorted(
+                snapshots, key=lambda x: x["sync_finish"], reverse=True
+            ):
                 i = i + 1
-                if s not in to_keep:
-                    to_keep.append(s)
+                if snapshot not in to_keep:
+                    to_keep.append(snapshot)
                 if i == last_snapshots:
                     break
 
@@ -374,7 +412,7 @@ def get_snapshots_to_delete(retention, snapshots):
         return []
 
     to_delete = []
-    for s in list(snapshot_dict.keys()):
-        if s not in to_keep:
-            to_delete.append(snapshot_dict[s])
+    for snapshot in snapshots:
+        if snapshot not in to_keep:
+            to_delete.append(snapshot)
     return to_delete
