@@ -294,7 +294,7 @@ def get_snapshots_from_dir(snapshots_dir):
             dir_time_parsed = parse_snapshot_name(dir)
         except ValueError:
             dir_time_parsed = None
-        json_info_fn = snapshots_dir.parent.joinpath("{}.json".format(dir))
+        json_info_fn = snapshot_dir.parent.joinpath("{}.json".format(dir))
         if json_info_fn.is_file():
             with json_info_fn.open() as f:
                 snapshot_info = json.load(f)

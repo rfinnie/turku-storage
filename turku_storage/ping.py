@@ -334,7 +334,7 @@ class StoragePing:
                             temp_delete_tree = snapshot["directory"].parent.joinpath(
                                 "_delete-{}".format(snapshot["directory"].parts[-1])
                             )
-                            if snapshot["info_file"].exists():
+                            if snapshot["info_file"] and snapshot["info_file"].exists():
                                 snapshot["info_file"].unlink()
                             snapshot["directory"].rename(temp_delete_tree)
                             # A subprocess call is used here instead of shutil.rmtree
