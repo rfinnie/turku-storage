@@ -220,17 +220,24 @@ class StoragePing:
                 os.makedirs(machine_dir)
 
             machine_symlink = machine["unit_name"]
+            meta = ["unit_name: %s" % (machine['unit_name'])]
             if "service_name" in machine and machine["service_name"]:
                 machine_symlink = machine["service_name"] + "-" + machine_symlink
+                meta.append("service_name: %s" % (machine['service_name']))
             if "environment_name" in machine and machine["environment_name"]:
                 machine_symlink = machine["environment_name"] + "-" + machine_symlink
+                meta.append("environment_name: %s" % (machine['environment_name']))
             machine_symlink = machine_symlink.replace("/", "_")
             if os.path.islink(os.path.join(var_machines, machine_symlink)):
                 os.unlink(os.path.join(var_machines, machine_symlink))
             if not os.path.exists(os.path.join(var_machines, machine_symlink)):
                 os.symlink(machine["uuid"], os.path.join(var_machines, machine_symlink))
 
-            self.logger.info("Begin: %s %s" % (machine["unit_name"], source_name))
+            meta_path = os.path.join(machine_dir, ".turku-storage-metadata.txt")
+            with open(meta_path, "w") as f:
+                f.write("\n".join(meta) + "\n")
+
+            self.logger.info("Begin: %s %s (%s)" % (machine["unit_name"], source_name, machine.get("environment_name")))
 
             rsync_args = [
                 "rsync",
