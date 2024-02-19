@@ -255,6 +255,8 @@ class StoragePing:
                     rsync_args.append(
                         "--link-dest={}".format(base_snapshot["directory"])
                     )
+                    # repeat the option so that rsync looks into the dir specified in link-dest, see rsync(1)
+                    rsync_args.extend(["--fuzzy", "--fuzzy"])
             else:
                 rsync_args.append("--inplace")
             if self.config["preserve_hard_links"]:
