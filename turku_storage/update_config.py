@@ -104,11 +104,12 @@ def main():
             authorized_keys_out += f.read()
     for machine_uuid in api_reply["machines"]:
         machine = api_reply["machines"][machine_uuid]
-        authorized_keys_out += '%s,command="%s %s" %s (%s)\n' % (
+        authorized_keys_out += '%s,command="%s %s" %s (%s %s)\n' % (
             "no-pty,no-agent-forwarding,no-X11-forwarding,no-user-rc",
             config["authorized_keys_command"],
             machine_uuid,
             machine["ssh_public_key"],
+            machine.get("environment_name", ""),
             machine["unit_name"],
         )
 
