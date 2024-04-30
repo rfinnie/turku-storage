@@ -233,10 +233,6 @@ class StoragePing:
             if not os.path.exists(os.path.join(var_machines, machine_symlink)):
                 os.symlink(machine["uuid"], os.path.join(var_machines, machine_symlink))
 
-            meta_path = os.path.join(machine_dir, ".turku-storage-metadata.txt")
-            with open(meta_path, "w") as f:
-                f.write("\n".join(meta) + "\n")
-
             self.logger.info("Begin: %s %s (%s)" % (machine["unit_name"], source_name, machine.get("environment_name")))
 
             rsync_args = [
@@ -308,6 +304,7 @@ class StoragePing:
             snapshot_name = None
             summary_output = None
             if success:
+                meta.append("status: Success!")
                 if snapshot_mode == "link-dest":
                     summary_output = ""
                     if base_snapshot:
@@ -351,6 +348,7 @@ class StoragePing:
                                 snapshot["name"]
                             )
             else:
+                meta.append("status: Failed!")
                 summary_output = "rsync exited with return code %d" % returncode
 
             time_end = time.time()
@@ -380,6 +378,10 @@ class StoragePing:
 
         self.logger.info("Done")
         lock.close()
+
+        meta_path = os.path.join(machine_dir, ".turku-storage-metadata.txt")
+        with open(meta_path, "w") as f:
+            f.write("\n".join(meta) + "\n")
 
     def main(self):
         try:
