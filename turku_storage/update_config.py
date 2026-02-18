@@ -21,9 +21,7 @@ from .utils import load_config, RuntimeLock, api_call, safe_write
 def parse_args():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--config-dir", "-c", type=str, default="/etc/turku-storage")
     parser.add_argument("--wait", "-w", type=float)
     parser.add_argument("--debug", action="store_true")
@@ -97,10 +95,7 @@ def main():
     api_reply = api_call(config["api_url"], "storage_update_config", api_out)
 
     authorized_keys_out = "# Automatically generated, please do not edit\n"
-    authorized_keys_out += (
-        "# Local additions may be placed in %s.static\n"
-        % config["authorized_keys_file"]
-    )
+    authorized_keys_out += "# Local additions may be placed in %s.static\n" % config["authorized_keys_file"]
     if os.path.isfile(config["authorized_keys_file"] + ".static"):
         with open(config["authorized_keys_file"] + ".static") as f:
             authorized_keys_out += f.read()

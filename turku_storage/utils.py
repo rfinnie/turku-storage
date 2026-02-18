@@ -134,19 +134,11 @@ def api_call(api_url, cmd, post_data, timeout=5):
     """Turku API call client"""
     url = urllib.parse.urljoin(api_url + "/", cmd)
     headers = {"Accept": "application/json"}
-    logging.debug(
-        "API request: {} {}".format(
-            url, json.dumps(post_data, sort_keys=True, indent=4)
-        )
-    )
+    logging.debug("API request: {} {}".format(url, json.dumps(post_data, sort_keys=True, indent=4)))
     r = requests.post(url, json=post_data, headers=headers, timeout=timeout)
     r.raise_for_status()
     response_json = r.json()
-    logging.debug(
-        "API response: {} {}".format(
-            r.status_code, json.dumps(response_json, sort_keys=True, indent=4)
-        )
-    )
+    logging.debug("API response: {} {}".format(r.status_code, json.dumps(response_json, sort_keys=True, indent=4)))
     return response_json
 
 
@@ -172,10 +164,7 @@ def load_config(config_dir):
     config_files = [
         os.path.join(config_d, fn)
         for fn in os.listdir(config_d)
-        if (
-            fn.endswith(".json")
-            or (fn.endswith(".yaml") and not isinstance(yaml, ImportError))
-        )
+        if (fn.endswith(".json") or (fn.endswith(".yaml") and not isinstance(yaml, ImportError)))
         and os.path.isfile(os.path.join(config_d, fn))
         and os.access(os.path.join(config_d, fn), os.R_OK)
     ]
@@ -198,9 +187,7 @@ def load_config(config_dir):
         if "accept_new" not in config["volumes"][volume_name]:
             config["volumes"][volume_name]["accept_new"] = True
         if "accept_new_high_water_pct" not in config["volumes"][volume_name]:
-            config["volumes"][volume_name]["accept_new_high_water_pct"] = config[
-                "accept_new_high_water_pct"
-            ]
+            config["volumes"][volume_name]["accept_new_high_water_pct"] = config["accept_new_high_water_pct"]
 
     if len(config["volumes"]) == 0:
         raise Exception("Incomplete config")
@@ -238,9 +225,7 @@ def load_config(config_dir):
             with open(pubkey) as f:
                 config["ssh_ping_host_keys"].append(f.read().rstrip())
     if "authorized_keys_file" not in config:
-        config["authorized_keys_file"] = os.path.expanduser(
-            "~{}/.ssh/authorized_keys".format(config["ssh_ping_user"])
-        )
+        config["authorized_keys_file"] = os.path.expanduser("~{}/.ssh/authorized_keys".format(config["ssh_ping_user"]))
     if "authorized_keys_user" not in config:
         config["authorized_keys_user"] = config["ssh_ping_user"]
     if "authorized_keys_command" not in config:
@@ -303,15 +288,11 @@ def get_snapshots_from_dir(snapshots_dir):
             snapshot_info["directory"] = snapshot_dir
             snapshot_info["info_file"] = json_info_fn
             if snapshot_info.get("sync_begin"):
-                snapshot_info["sync_begin"] = datetime.datetime.fromisoformat(
-                    snapshot_info["sync_begin"]
-                )
+                snapshot_info["sync_begin"] = datetime.datetime.fromisoformat(snapshot_info["sync_begin"])
             else:
                 snapshot_info["sync_begin"] = None
             if snapshot_info.get("sync_finish"):
-                snapshot_info["sync_finish"] = datetime.datetime.fromisoformat(
-                    snapshot_info["sync_finish"]
-                )
+                snapshot_info["sync_finish"] = datetime.datetime.fromisoformat(snapshot_info["sync_finish"])
             else:
                 snapshot_info["sync_finish"] = dir_time_parsed
             if not snapshot_info.get("name"):
@@ -351,29 +332,23 @@ def get_snapshots_to_delete(retention, snapshots):
                 earliest_word = "week"
                 earliest_num = earliest_num * 2
             if earliest_word == "day":
-                cutoff_time = now.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) - datetime.timedelta(days=(earliest_num - 1))
+                cutoff_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=(earliest_num - 1))
             elif earliest_word == "week":
-                cutoff_time = now.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) - datetime.timedelta(days=((now.weekday() + 1) % 7))
+                cutoff_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(
+                    days=((now.weekday() + 1) % 7)
+                )
                 for i in range(earliest_num - 1):
                     cutoff_time = (cutoff_time - datetime.timedelta(weeks=1)).replace(
                         day=1, hour=0, minute=0, second=0, microsecond=0
                     )
             elif earliest_word == "month":
-                cutoff_time = now.replace(
-                    day=1, hour=0, minute=0, second=0, microsecond=0
-                )
+                cutoff_time = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 for i in range(earliest_num - 1):
                     cutoff_time = (cutoff_time - datetime.timedelta(days=1)).replace(
                         day=1, hour=0, minute=0, second=0, microsecond=0
                     )
             else:
-                cutoff_time = now.replace(
-                    hour=0, minute=0, second=0, microsecond=0
-                ) - datetime.timedelta(days=(earliest_num - 1))
+                cutoff_time = now.replace(hour=0, minute=0, second=0, microsecond=0) - datetime.timedelta(days=(earliest_num - 1))
             candidate_snapshot = None
             for snapshot in snapshots:
                 if snapshot["sync_finish"] < cutoff_time:
@@ -399,9 +374,7 @@ def get_snapshots_to_delete(retention, snapshots):
         if len(r) > 0:
             last_snapshots = int(r[0])
             i = 0
-            for snapshot in sorted(
-                snapshots, key=lambda x: x["sync_finish"], reverse=True
-            ):
+            for snapshot in sorted(snapshots, key=lambda x: x["sync_finish"], reverse=True):
                 i = i + 1
                 if snapshot not in to_keep:
                     to_keep.append(snapshot)

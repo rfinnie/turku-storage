@@ -1,0 +1,34 @@
+# SPDX-PackageName: turku-storage
+# SPDX-PackageSupplier: Ryan Finnie <ryan@finnie.org>
+# SPDX-PackageDownloadLocation: https://github.com/rfinnie/turku-storage
+# SPDX-FileCopyrightText: © 2015 Canonical Ltd.
+# SPDX-FileCopyrightText: © 2015 Ryan Finnie <ryan@finnie.org>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+[project]
+name = "turku-storage"
+authors = [
+    {name = "Ryan Finnie", email = "ryan@finnie.org"},
+]
+description = "Turku backups - storage units"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "GPL-3.0-or-later"}
+dependencies = [
+    "requests",
+    "PyYAML",
+]
+dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+include = [
+    "turku_storage",
+    "turku_storage.tests",
+]
+
+[project.scripts]
+turku-storage-ping = "turku_storage.ping:main"
+turku-storage-update-config = "turku_storage.update_config:main"
+
+[tool.black]
+line-length = 132

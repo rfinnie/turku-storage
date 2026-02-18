@@ -47,37 +47,23 @@ class StoragePing:
         self.logger.setLevel(logging.DEBUG)
 
         self.lh_console = logging.StreamHandler()
-        self.lh_console_formatter = logging.Formatter(
-            "[%(asctime)s %(name)s] %(levelname)s: %(message)s"
-        )
+        self.lh_console_formatter = logging.Formatter("[%(asctime)s %(name)s] %(levelname)s: %(message)s")
         self.lh_console.setFormatter(self.lh_console_formatter)
         self.lh_console.setLevel(logging.ERROR)
         self.logger.addHandler(self.lh_console)
 
-        if self.config["log_file"] == "systemd" and (
-            not isinstance(systemd_journal, ImportError)
-        ):
-            self.lh_local = systemd_journal.JournalHandler(
-                SYSLOG_IDENTIFIER="turku-storage-ping"
-            )
-            self.lh_local_formatter = logging.Formatter(
-                "%(name)s {}: %(message)s".format(self.arg_uuid)
-            )
+        if self.config["log_file"] == "systemd" and (not isinstance(systemd_journal, ImportError)):
+            self.lh_local = systemd_journal.JournalHandler(SYSLOG_IDENTIFIER="turku-storage-ping")
+            self.lh_local_formatter = logging.Formatter("%(name)s {}: %(message)s".format(self.arg_uuid))
         elif self.config["log_file"] == "syslog":
             self.lh_local = logging.handlers.SysLogHandler()
             self.lh_local_formatter = logging.Formatter(
-                "{} turku-storage-ping[%(process)s] %(name)s {}: %(message)s".format(
-                    platform.node(), self.arg_uuid
-                )
+                "{} turku-storage-ping[%(process)s] %(name)s {}: %(message)s".format(platform.node(), self.arg_uuid)
             )
         elif self.config["log_file"]:
             self.lh_local = logging.FileHandler(self.config["log_file"])
             self.lh_local_formatter = logging.Formatter(
-                "%(asctime)s "
-                + platform.node()
-                + " turku-storage-ping[%(process)s] (%(name)s) "
-                + self.arg_uuid
-                + ": %(message)s"
+                "%(asctime)s " + platform.node() + " turku-storage-ping[%(process)s] (%(name)s) " + self.arg_uuid + ": %(message)s"
             )
         else:
             self.lh_local = None
@@ -131,9 +117,7 @@ class StoragePing:
             self.lh_console.setLevel(logging.INFO)
 
         if "action" in j and j["action"] == "restore":
-            self.logger.info(
-                "Restore mode active on port %d.  Good luck." % forwarded_port
-            )
+            self.logger.info("Restore mode active on port %d.  Good luck." % forwarded_port)
 
             while sys.stdin.read():
                 pass
@@ -149,9 +133,7 @@ class StoragePing:
         machine = api_reply["machine"]
         scheduled_sources = machine["scheduled_sources"]
         if len(scheduled_sources) > 0:
-            self.logger.info(
-                "Sources to back up: %s" % ", ".join([s for s in scheduled_sources])
-            )
+            self.logger.info("Sources to back up: %s" % ", ".join([s for s in scheduled_sources]))
         else:
             self.logger.info("No sources to back up now")
         for source_name in scheduled_sources:
@@ -160,13 +142,9 @@ class StoragePing:
             source_username = None
             source_password = None
             if ("sources" in j) and (source_name in j["sources"]):
-                if ("username" in j["sources"][source_name]) and j["sources"][
-                    source_name
-                ]["username"]:
+                if ("username" in j["sources"][source_name]) and j["sources"][source_name]["username"]:
                     source_username = j["sources"][source_name]["username"]
-                if ("password" in j["sources"][source_name]) and j["sources"][
-                    source_name
-                ]["password"]:
+                if ("password" in j["sources"][source_name]) and j["sources"][source_name]["password"]:
                     source_password = j["sources"][source_name]["password"]
             else:
                 if ("username" in s) and s["username"]:
@@ -174,9 +152,7 @@ class StoragePing:
                 if ("password" in s) and s["password"]:
                     source_password = s["password"]
             if not (source_username and source_password):
-                self.logger.error(
-                    'Cannot find authentication for source "%s"' % source_name
-                )
+                self.logger.error('Cannot find authentication for source "%s"' % source_name)
                 continue
             snapshot_mode = self.config["snapshot_mode"]
             if snapshot_mode == "link-dest":
@@ -204,9 +180,7 @@ class StoragePing:
                     s_t = sv.f_bsize * sv.f_blocks / 1048576
                     s_a = sv.f_bsize * sv.f_bavail / 1048576
                     pct_used = (1.0 - float(s_a) / float(s_t)) * 100.0
-                    if (not v["accept_new"]) or (
-                        pct_used > v["accept_new_high_water_pct"]
-                    ):
+                    if (not v["accept_new"]) or (pct_used > v["accept_new_high_water_pct"]):
                         continue
                     weights[volume_name] = s_a
                 if len(weights) == 0:
@@ -214,9 +188,7 @@ class StoragePing:
                 chosen_volume = random_weighted(weights)
                 if not chosen_volume:
                     raise Exception("Cannot find a suitable storage directory")
-                machine_dir = os.path.join(
-                    self.config["volumes"][chosen_volume]["path"], machine["uuid"]
-                )
+                machine_dir = os.path.join(self.config["volumes"][chosen_volume]["path"], machine["uuid"])
                 os.symlink(machine_dir, os.path.join(var_machines, machine["uuid"]))
             if not os.path.exists(machine_dir):
                 os.makedirs(machine_dir)
@@ -254,9 +226,7 @@ class StoragePing:
                 snapshots = get_snapshots_from_dir(pathlib.Path(snapshot_dir))
                 base_snapshot = get_latest_snapshot(snapshots)
                 if base_snapshot:
-                    rsync_args.append(
-                        "--link-dest={}".format(base_snapshot["directory"])
-                    )
+                    rsync_args.append("--link-dest={}".format(base_snapshot["directory"]))
             else:
                 rsync_args.append("--inplace")
             if self.config["preserve_hard_links"]:
@@ -282,10 +252,7 @@ class StoragePing:
             if "bwlimit" in s and s["bwlimit"]:
                 rsync_args.append("--bwlimit=%s" % s["bwlimit"])
 
-            rsync_args.append(
-                "rsync://%s@127.0.0.1:%d/%s/"
-                % (source_username, forwarded_port, source_name)
-            )
+            rsync_args.append("rsync://%s@127.0.0.1:%d/%s/" % (source_username, forwarded_port, source_name))
 
             rsync_args.append("%s/" % dest_dir)
 
@@ -306,9 +273,7 @@ class StoragePing:
                 if snapshot_mode == "link-dest":
                     summary_output = ""
                     if base_snapshot:
-                        summary_output += "Base snapshot: {}\n".format(
-                            base_snapshot["name"]
-                        )
+                        summary_output += "Base snapshot: {}\n".format(base_snapshot["name"])
                     snapshot_name = "{}_{}_{}".format(
                         source_name,
                         sync_finish.strftime("%Y%m%d-%H%M%S"),
@@ -321,9 +286,7 @@ class StoragePing:
                         "sync_begin": sync_begin.isoformat(),
                         "sync_finish": sync_finish.isoformat(),
                     }
-                    with open(
-                        os.path.join(snapshot_dir, "{}.json".format(snapshot_name)), "w"
-                    ) as f:
+                    with open(os.path.join(snapshot_dir, "{}.json".format(snapshot_name)), "w") as f:
                         json.dump(info_out, f, sort_keys=True, indent=4)
                     if os.path.islink(os.path.join(snapshot_dir, "latest")):
                         os.unlink(os.path.join(snapshot_dir, "latest"))
@@ -342,9 +305,7 @@ class StoragePing:
                             # A subprocess call is used here instead of shutil.rmtree
                             # as the latter can be very slow, especially for large trees.
                             subprocess.call(["rm", "-rf", str(temp_delete_tree)])
-                            summary_output += "Removed old snapshot: {}\n".format(
-                                snapshot["name"]
-                            )
+                            summary_output += "Removed old snapshot: {}\n".format(snapshot["name"])
             else:
                 summary_output = "rsync exited with return code %d" % returncode
 
@@ -367,9 +328,7 @@ class StoragePing:
                     },
                 },
             }
-            api_reply = api_call(
-                self.config["api_url"], "storage_ping_source_update", api_out
-            )
+            api_reply = api_call(self.config["api_url"], "storage_ping_source_update", api_out)
 
             self.logger.info("End: %s %s" % (machine["unit_name"], source_name))
 
@@ -387,9 +346,7 @@ class StoragePing:
 def parse_args():
     import argparse
 
-    parser = argparse.ArgumentParser(
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--config-dir", "-c", type=str, default="/etc/turku-storage")
     parser.add_argument("uuid")
     return parser.parse_args()
