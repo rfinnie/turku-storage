@@ -1,30 +1,26 @@
-name: ci
-on: [push, pull_request]
+---
+name: "ci"
+"on": ["push", "pull_request"]
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: "${{ matrix.os }}"
     strategy:
       matrix:
         os:
-        - macos-latest
-        - ubuntu-latest
+          - "macos-latest"
+          - "ubuntu-latest"
         python-version:
-        - "3.8"
-        - "3.10"
+          - "3.10"
+          - "3.12"
     steps:
-    - uses: actions/checkout@v3
-    - name: Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Python dependencies
-      run: |
-        python -mpip install tox
-    - name: tox
-      run: |
-        python -mtox
-    - name: Upload sdist zip
-      uses: actions/upload-artifact@v3
-      with:
-        name: sdist-${{ github.job }}-${{ github.run_id }}.${{ github.run_number }}-${{ runner.os }}-py${{ matrix.python-version }}
-        path: .tox/dist/*.zip
+      - uses: "actions/checkout@v4"
+      - name: "Python ${{ matrix.python-version }}"
+        uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: "Python dependencies"
+        run: |
+          python -mpip install tox
+      - name: "tox"
+        run: |
+          python -mtox
