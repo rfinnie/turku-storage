@@ -12,13 +12,17 @@ authors = [
 ]
 description = "Turku backups - storage units"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = "GPL-3.0-or-later"
 dependencies = [
     "requests",
     "PyYAML",
 ]
 dynamic = ["version"]
+
+[build-system]
+requires = ["setuptools>=59.6.0"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = [
