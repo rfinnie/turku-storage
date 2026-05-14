@@ -5,9 +5,9 @@ Turku is an agent-based backup system where the server doing the backups has no 
 
 Turku is comprised of the following components:
 
-* [turku-api](https://codeberg.org/rfinnie/turku-api), a Django web application which acts as an API server and coordinator.
-* [turku-storage](https://codeberg.org/rfinnie/turku-storage), an agent installed on the servers which do the actual backups.
-* [turku-agent](https://codeberg.org/rfinnie/turku-agent), an agent installed on the machines to be backed up.
+* [turku-api](https://forge.colobox.com/rfinnie/turku-api), a Django web application which acts as an API server and coordinator.
+* [turku-storage](https://forge.colobox.com/rfinnie/turku-storage), an agent installed on the servers which do the actual backups.
+* [turku-agent](https://forge.colobox.com/rfinnie/turku-agent), an agent installed on the machines to be backed up.
 
 ## Installation
 
