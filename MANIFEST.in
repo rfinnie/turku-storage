@@ -6,7 +6,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 include Makefile
 include README.md
-include LICENSE.md
 include tox.ini
 include turku-storage.cron
 include turku-storage-update-config.service
