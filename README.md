@@ -1,5 +1,8 @@
 # turku-storage
 
+[![Git forge repository](https://img.shields.io/badge/git-forge-orange?logo=forgejo)](https://forge.colobox.com/rfinnie/turku-storage)
+[![CI pipeline status](https://woodpecker.colobox.com/api/badges/58/status.svg)](https://woodpecker.colobox.com/repos/58)
+
 ## About Turku
 Turku is an agent-based backup system where the server doing the backups has no direct access to the machine being backed up.  Instead, the machine's agent coordinates with an API server and opens a reverse tunnel to the storage server when it is time to do a backup.
 
